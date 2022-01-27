@@ -1,8 +1,8 @@
 # -*- coding: UTF-8 -*-
 """
-project_name base module.
+syd base module.
 
-This is the principal module of the project_name project.
+This is the principal module of the syd project.
 here you put your main classes and objects.
 
 Be creative! do whatever you want!
