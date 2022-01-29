@@ -4,9 +4,9 @@ from syd import BaseClass, base_function
 
 given = pytest.mark.parametrize
 
-
 @given("fn", [BaseClass(), base_function])
 def test_parameterized(fn):
+    # print(fn)
     assert "hello from" in fn()
 
 

@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
-import argparse 
-import logging  
+import argparse # pragma: no cover
+import logging  # pragma: no cover
 
 from . import BaseClass, base_function  # pragma: no cover
 
@@ -36,15 +36,7 @@ def main() -> None:  # pragma: no cover
         help="The username",
         default="ryanzhang",
     )
-    # This is optional named argument
-    parser.add_argument(
-        "-m",
-        "--message",
-        type=str,
-        help="The Message",
-        default="Hello",
-        required=False,
-    )
+
     parser.add_argument(
         "-v",
         "--verbose",
