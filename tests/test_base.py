@@ -16,3 +16,4 @@ def test_base_function():
 
 def test_base_class():
     assert BaseClass().base_method() == "hello from BaseClass"
+    assert not not True

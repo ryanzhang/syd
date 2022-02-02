@@ -1,10 +1,17 @@
+# -*- coding: UTF-8 -*-
 import sys
 import pytest
+import logging
 
+# 初始化日志
+logging.basicConfig(
+    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
+)
 
 # each test runs on cwd to its temp dir
 @pytest.fixture(autouse=True)
 def go_to_tmpdir(request):
+    logging.info("\n=======================request start=================================")
     # Get the fixture dynamically by its name.
     tmpdir = request.getfixturevalue("tmpdir")
     # ensure local test created packages can be imported
