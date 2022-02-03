@@ -6,10 +6,8 @@ import os
 import logging
 
 from syd.config import AppConfig
-
-logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-)
+from syd.logger import logger
+from syd.config import configs
 
 given = pytest.mark.parametrize
 skipif = pytest.mark.skipif

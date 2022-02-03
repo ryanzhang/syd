@@ -129,7 +129,7 @@ sdist:
 .PHONY: image
 image:
 	@read -p "Version? (provide the next x.y.z version,Suggest projectversion-buildtag, eg: 0.0.1-1) : " TAG
-	podman build -f Containerfile . -t syd:$${TAG}	
+	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t syd:$${TAG}	
 # This project has been generated from ryanzhang/python-project-template which is forked from 
 # rochacbruno/python-project-template
 # __author__ = 'rochacbruno'

@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import psycopg2
 import time, os.path
 import traceback
-import logging
 import hashlib
 from datetime import datetime
 from sqlalchemy import and_
@@ -27,24 +26,21 @@ from sqlalchemy.orm import Session
 
 Base = declarative_base()
 
-from syd.config import AppConfig
+from syd.config import configs
+from syd.logger import logger
 
-pd.set_option('expand_frame_repr', False)
-logging.basicConfig(level=logging.INFO, format=' %(asctime)s - %(levelname)s- %(message)s')
+# pd.set_option('expand_frame_repr', False)
 
-#导入数据
-# postgres config
-postgres_host = "pg-quant-invest"               # 数据库地址
-# postgres_host = "192.168.2.20"               # 数据库地址
-postgres_port = "5432"       # 数据库端口
-postgres_user = "user"              # 数据库用户名
-postgres_password = "password"      # 数据库密码
-postgres_datebase = "market"      # 数据库名字
+postgres_host=configs['postgres_host'].data
+postgres_port=configs['postgres_port'].data
+postgres_user=configs['postgres_user'].data
+postgres_password=configs['postgres_password'].data
+postgres_database=configs['postgres_database'].data
 
-_conn_string = "host=" + postgres_host + " port=" + postgres_port + " dbname=" + postgres_datebase + \
+_conn_string = "host=" + postgres_host + " port=" + postgres_port + " dbname=" + postgres_database + \
                 " user=" + postgres_user + " password=" + postgres_password
 
-_db_string = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_datebase}"
+_db_string = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_database}"
 
 class DBAdaptor:
     def __init__(self, conn_string="", is_use_cache=False):
@@ -61,14 +57,14 @@ class DBAdaptor:
 
     def getDfAndCsvBySql(self,  query_sql) -> tuple[pd.DataFrame, str]:
         df = self.getDfBySql(query_sql)
-        csv_file_path = AppConfig.cache_folder + self.calculateCacheFilename(query_sql) + ".csv"
+        csv_file_path = configs['cache_folder'].data + self.calculateCacheFilename(query_sql) + ".csv"
         df.to_csv(csv_file_path)
 
         return df, csv_file_path
 
     def getDfBySql(self,  query_sql) -> pd.DataFrame:
         if self.is_use_cache:
-            df_cache_file = AppConfig.cache_folder + self.calculateCacheFilename(query_sql) + ".pkl"
+            df_cache_file = configs['cache_folder'].data + self.calculateCacheFilename(query_sql) + ".pkl"
         else:
             df_cache_file = None
 
@@ -76,16 +72,16 @@ class DBAdaptor:
             df = pd.read_pickle(df_cache_file)
         else:
             try:
-                logging.debug(f"Loading Query from pg_host:{postgres_host}, query_sql: {query_sql}")
+                logger.debug(f"Loading Query from pg_host:{postgres_host}, query_sql: {query_sql}")
                 df= pd.read_sql(query_sql, self.conn)            
             except Exception as e:
-                logging.error("loading data from db failure" + traceback.format_exc())
-                logging.error("Exception is: " + str(e) ) 
+                logger.error("loading data from db failure" + traceback.format_exc())
+                logger.error("Exception is: " + str(e) ) 
                 df = None     
             if df is None or df.shape[0]== 0:
-                logging.warning("there is no data,pls check your query:" + query_sql)
+                logger.warning("there is no data,pls check your query:" + query_sql)
             else:
-                logging.debug(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
+                logger.debug(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
                 if self.is_use_cache:
                     df.to_pickle(df_cache_file)
 
@@ -97,8 +93,8 @@ class DBAdaptor:
             session.add(entity)
             session.commit()
         except Exception as e:
-            logging.error("Save record to db error" + traceback.format_exc())
-            logging.error("Exception is: " + str(e))
+            logger.error("Save record to db error" + traceback.format_exc())
+            logger.error("Exception is: " + str(e))
             return False
 
         return True
@@ -109,8 +105,8 @@ class DBAdaptor:
             session.add_all(entitylist);
             session.commit()
         except Exception as e:
-            logging.error("Save record to db error" + traceback.format_exc())
-            logging.error("Exception is: " + str(e) ) 
+            logger.error("Save record to db error" + traceback.format_exc())
+            logger.error("Exception is: " + str(e) ) 
             return False
 
         return True
@@ -121,8 +117,8 @@ class DBAdaptor:
             session.execute(update(SyncStatus).where(SyncStatus.table_name == tablename).values(rc=rc,update_time=update_time, comment=comment))
             session.commit()
         except Exception as e:
-            logging.error("Save record to db error" + traceback.format_exc())
-            logging.error("Exception is: " + str(e) ) 
+            logger.error("Save record to db error" + traceback.format_exc())
+            logger.error("Exception is: " + str(e) ) 
             return False
         return True
 
@@ -132,8 +128,8 @@ class DBAdaptor:
     #         session.add(entity)
     #         session.commit()
     #     except Exception as e:
-    #         logging.error("Save record to db error" + traceback.format_exc())
-    #         logging.error("Exception is: " + str(e) ) 
+    #         logger.error("Save record to db error" + traceback.format_exc())
+    #         logger.error("Exception is: " + str(e) ) 
     #         return False
     #     return True
 
@@ -143,8 +139,8 @@ class DBAdaptor:
             session.query(cls).filter(cls.id == id).delete()
             session.commit()
         except Exception as e:
-            logging.error("Delete record from db error" + traceback.format_exc())
-            logging.error("Exception is: " + str(e) ) 
+            logger.error("Delete record from db error" + traceback.format_exc())
+            logger.error("Exception is: " + str(e) ) 
             return False
         
         return True

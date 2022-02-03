@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/ryanzhang/syd/branch/main/graph/badge.svg?token=syd_token_here)](https://codecov.io/gh/ryanzhang/syd)
 [![CI](https://github.com/ryanzhang/syd/actions/workflows/main.yml/badge.svg)](https://github.com/ryanzhang/syd/actions/workflows/main.yml)
 
-找到缺失的数据, 并更新数据，数据来源是通达信，使用 mootdx
+<!-- 找到缺失的数据, 并更新数据，数据来源是通达信，使用 mootdx -->
 
 设计思路
 

@@ -1,5 +1,8 @@
+from jproperties import Properties
 
-class AppConfig:
-    profile = "PROD"
-    #Need end with /
-    cache_folder = "/tmp/"
+configs = Properties()
+
+with open('syd/resources/app-config.properties', 'rb') as config_file:
+    configs.load(config_file)
+
+

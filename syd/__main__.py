@@ -1,14 +1,10 @@
 # -*- coding: UTF-8 -*-
 import argparse # pragma: no cover
-import logging
+from syd.logger import logger
 from syd.stocksyncer import StockSyncer  # pragma: no cover
 
-from . import BaseClass, base_function  # pragma: no cover
 
-# 初始化日志
-logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-)
+from . import BaseClass, base_function  # pragma: no cover
 
 def main() -> None:  # pragma: no cover
     """
@@ -52,11 +48,11 @@ def main() -> None:  # pragma: no cover
         #     level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
         # )
 
-    logging.info("Executing main function")
+    logger.info("Executing main function")
     ss = StockSyncer()
     ss.sync_equity()
     ss.sync_mkt_equ_d()
-    logging.info("End of main function")
+    logger.info("End of main function")
 
 
 if __name__ == "__main__":  # pragma: no cover

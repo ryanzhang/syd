@@ -1,28 +1,16 @@
 # -*- coding: UTF-8 -*-
-import logging
-from syd.domain import Equity, MktEquDay, SyncStatus, TradeCalendar
+from syd.domain import Equity, MktEquDay,  TradeCalendar
 import pandas as pd;
 from syd.dbadaptor import DBAdaptor
 from syd.tusadaptor import TUSAdaptor
-from datetime import datetime,timedelta, date
-from sqlalchemy import and_
-from sqlalchemy import Column
-from sqlalchemy import create_engine
-from sqlalchemy import DateTime
-from sqlalchemy import Float
-from sqlalchemy import ForeignKey
-from sqlalchemy import Integer
-from sqlalchemy import String
+from datetime import datetime,timedelta
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from sqlalchemy.orm import Session
 # from  pandas.tseries.offsets import MonthEnd, YearEnd
+from syd.config import configs
+from syd.logger import logger
 
 Base = declarative_base()
 
-logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-)
 
 
 class StockSyncer:
@@ -38,12 +26,12 @@ class StockSyncer:
         return self.calendar
 
     def is_open_day(self, thedate) -> bool: 
-        logging.info(str(thedate))
+        logger.info(str(thedate))
         ret = False
         df = self.get_trade_calendar()
         if (df['calendar_date'] == thedate).any():
             ret = df.loc[(df.calendar_date == thedate) & (df.exchange_cd == 'XSHG'), 'is_open']
-        # logging.info(type(ret.iloc[0]))
+        # logger.info(type(ret.iloc[0]))
         return ret.iloc[0]
         
     #返回
@@ -78,14 +66,14 @@ class StockSyncer:
         rc = self.db.saveAll(entitylist)
         #Start to update update table
         if not self.db.updateSyncStatus("equity",rc,datetime.now(), f"更新前:{origin_size},增量:{incr_size}"):
-            logging.warning("Update sync_status table failed!")
+            logger.warning("Update sync_status table failed!")
         if not rc:
             export_filepath = "/tmp/equity_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
             df_incremental.to_csv(export_filepath)
-            logging.error("Save records to Stock.equity error, the incremental \
+            logger.error("Save records to Stock.equity error, the incremental \
                 records has been store to:" + export_filepath)
             raise Exception("Store incremental data to DB Error, please correct it!")
-        logging.info(f"equity 表更新完毕, 更新前:{origin_size},增量:{incr_size}")
+        logger.info(f"equity 表更新完毕, 更新前:{origin_size},增量:{incr_size}")
         return df_incremental, [tus_csv_file, db_bf_csv_file]
 
     #返回
@@ -135,11 +123,11 @@ class StockSyncer:
         rc = self.db.saveAll(entitylist)
         #Start to update update table
         if not self.db.updateSyncStatus("trade_calendar",rc,datetime.now(), f"更新前:{bf_latest_date},更新后:{after_latest_date}"):
-            logging.warning("Update sync_status table failed!")
+            logger.warning("Update sync_status table failed!")
         if not rc:
-            export_filepath = "/tmp/equity_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
+            export_filepath = configs['cache_folder'].data + "equity_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
             df_transform.to_csv(export_filepath)
-            logging.error("Save records to Stock.trade_calendar error, the incremental \
+            logger.error("Save records to Stock.trade_calendar error, the incremental \
                 records has been store to:" + export_filepath)
             raise Exception("Store incremental data to DB Error, please correct it!")
 
@@ -169,7 +157,7 @@ class StockSyncer:
         fetch_date = latest_k_date + timedelta(days=1)
         data_list=[]
         if fetch_date > latest_t_date:
-            logging.info(f"日线数据mkt_equ_day已经更新到{latest_k_date}")
+            logger.info(f"日线数据mkt_equ_day已经更新到{latest_k_date}")
             return pd.DataFrame()
 
         while fetch_date <= latest_t_date:
@@ -188,10 +176,10 @@ class StockSyncer:
     def sync_mkt_equ_d(self):
         df = self.fetch_latest_mkt_equity_day_data()
         if df is None or df.shape[0] == 0:
-            logging.info("没有获取到更新数据，可能数据已经更新到最新了!")
+            logger.info("没有获取到更新数据，可能数据已经更新到最新了!")
         else:
             self.write_to_db(df)
-            logging.info("mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
+            logger.info("mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
         
 
     #获取日线表中没有的股票数据
@@ -203,8 +191,8 @@ class StockSyncer:
 
         end_date = datetime.today().date() 
         df_new = df_new[df_new['list_date']<= end_date ]
-        logging.info(f"Found missing 股票列表: {df_new['sec_id'].astype(str).values.tolist()}")
-        logging.info("开始从tushare获取日线数据")
+        logger.info(f"Found missing 股票列表: {df_new['sec_id'].astype(str).values.tolist()}")
+        logger.info("开始从tushare获取日线数据")
         
         df = self.tus.getMktEquDByCodeList(sec_ids=df_new['sec_id'], \
             start_date=df_new['list_date'].min(), end_date=end_date)
@@ -213,7 +201,7 @@ class StockSyncer:
 
     def write_to_db(self, df:pd.DataFrame)->bool:
         if df is None or df.shape[0] == 0:
-            logging.info("保存0条数据到数据库。")
+            logger.info("保存0条数据到数据库。")
             return False
         df_equ = self.db.getDfBySql("select sec_id,ticker, sec_short_name from \
             stock.equity where list_status_cd = 'L' ")
@@ -252,12 +240,12 @@ class StockSyncer:
         after_latest_date = df.iloc[-1]['trade_date']
         if not self.db.updateSyncStatus("mkt_equ_day",rc,datetime.now(), \
             f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"):
-            logging.warning("Update sync_status table failed!")
+            logger.warning("Update sync_status table failed!")
         
         if not rc:
             export_filepath = "/tmp/mkt_equ_day_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
             df.to_csv(export_filepath)
-            logging.error("Save records to Stock.mkt_equ_day error, the incremental \
+            logger.error("Save records to Stock.mkt_equ_day error, the incremental \
                 records has been store to:" + export_filepath)
             raise Exception("Store incremental data to DB Error, please correct it!")
         
