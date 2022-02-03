@@ -47,20 +47,26 @@ _conn_string = "host=" + postgres_host + " port=" + postgres_port + " dbname=" +
 _db_string = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_datebase}"
 
 class DBAdaptor:
-    def __init__(self, conn_string="", is_use_cache=False, is_export_csv=False):
+    def __init__(self, conn_string="", is_use_cache=False):
         if conn_string == "":
            conn_string = _conn_string
         self.conn_string = conn_string
         self.conn = psycopg2.connect(self.conn_string)
         self.is_use_cache = is_use_cache
-        self.is_export_csv = is_export_csv
         self.engine = create_engine(_db_string)
-        # logging.info("Current Profile:" + AppConfig.profile)
 
     def setCacheMode(self,is_use_cache):
         self.is_use_cache = is_use_cache
 
-    def getDfBySql(self,  query_sql) -> tuple[pd.DataFrame, str]:
+
+    def getDfAndCsvBySql(self,  query_sql) -> tuple[pd.DataFrame, str]:
+        df = self.getDfBySql(query_sql)
+        csv_file_path = AppConfig.cache_folder + self.calculateCacheFilename(query_sql) + ".csv"
+        df.to_csv(csv_file_path)
+
+        return df, csv_file_path
+
+    def getDfBySql(self,  query_sql) -> pd.DataFrame:
         if self.is_use_cache:
             df_cache_file = AppConfig.cache_folder + self.calculateCacheFilename(query_sql) + ".pkl"
         else:
@@ -70,26 +76,20 @@ class DBAdaptor:
             df = pd.read_pickle(df_cache_file)
         else:
             try:
-                logging.info(f"Loading Query from pg_host:{postgres_host}, query_sql: {query_sql}")
+                logging.debug(f"Loading Query from pg_host:{postgres_host}, query_sql: {query_sql}")
                 df= pd.read_sql(query_sql, self.conn)            
             except Exception as e:
                 logging.error("loading data from db failure" + traceback.format_exc())
-                logging.error("Exception is: " + str(e) + e.with_traceback()) 
+                logging.error("Exception is: " + str(e) ) 
                 df = None     
             if df is None or df.shape[0]== 0:
                 logging.warning("there is no data,pls check your query:" + query_sql)
             else:
-                logging.info(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
+                logging.debug(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
                 if self.is_use_cache:
                     df.to_pickle(df_cache_file)
 
-        if self.is_export_csv: 
-            csv_file_path = AppConfig.cache_folder + self.calculateCacheFilename(query_sql) + ".csv"
-            df.to_csv(csv_file_path)
-        else:
-            csv_file_path = None
-
-        return df, csv_file_path
+        return df
 
     def save(self, entity)->bool:
         try:
@@ -133,7 +133,7 @@ class DBAdaptor:
     #         session.commit()
     #     except Exception as e:
     #         logging.error("Save record to db error" + traceback.format_exc())
-    #         logging.error("Exception is: " + str(e) + e.with_traceback()) 
+    #         logging.error("Exception is: " + str(e) ) 
     #         return False
     #     return True
 

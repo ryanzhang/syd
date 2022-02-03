@@ -24,7 +24,7 @@ class TestDBAdaptor:
     def db(self):
         logging.info("Setup for Class")
         print("Setup for Class")
-        db = DBAdaptor(is_use_cache=True, is_export_csv=True)
+        db = DBAdaptor(is_use_cache=True)
         if os.path.exists(expect_cache_file_path):
             os.remove(expect_cache_file_path)
         return db
@@ -39,7 +39,7 @@ class TestDBAdaptor:
 
     def test_get_equity_without_cache(self,db):
         db.setCacheMode(False)
-        df,csv_file = db.getDfBySql(query_sql)
+        df,csv_file = db.getDfAndCsvBySql(query_sql)
         assert df is not None
         assert csv_file is not None
         assert not os.path.exists(expect_cache_file_path)
@@ -47,7 +47,7 @@ class TestDBAdaptor:
 
     def test_get_equity_with_cache(self,db):
         db.setCacheMode(True)
-        df,csv_file = db.getDfBySql(query_sql)
+        df,csv_file = db.getDfAndCsvBySql(query_sql)
         assert df is not None
         assert csv_file is not None
         assert os.path.exists(expect_cache_file_path)
@@ -60,7 +60,7 @@ class TestDBAdaptor:
     @skip
     # Caution when you delete your data
     def test_no_duplicate(self, db):
-        df_mkt_idx_d, cvs_mkt_idx_d = db.getDfBySql("select * from stock.mkt_idx_day")
+        df_mkt_idx_d = db.getDfBySql("select * from stock.mkt_idx_day")
         df_mkt_idx_d.sort_values(['index_id', 'trade_date'], inplace=True)
 
         df_dup = df_mkt_idx_d[df_mkt_idx_d.duplicated(['trade_date','index_id'])]

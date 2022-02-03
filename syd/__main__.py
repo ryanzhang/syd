@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 import argparse # pragma: no cover
-import logging  # pragma: no cover
+import logging
+from syd.stocksyncer import StockSyncer  # pragma: no cover
 
 from . import BaseClass, base_function  # pragma: no cover
 
@@ -26,16 +27,16 @@ def main() -> None:  # pragma: no cover
         * Run an application (Flask, FastAPI, Django, etc.)
     """
     parser = argparse.ArgumentParser(
-        description="syd.",
+        description="syd 同步我的金融数据库",
         epilog="Enjoy the syd functionality!",
     )
-    # This is required positional argument
-    parser.add_argument(
-        "name",
-        type=str,
-        help="The username",
-        default="ryanzhang",
-    )
+    # # This is required positional argument
+    # parser.add_argument(
+    #     "name",
+    #     type=str,
+    #     help="The username",
+    #     default="ryanzhang",
+    # )
 
     parser.add_argument(
         "-v",
@@ -44,16 +45,18 @@ def main() -> None:  # pragma: no cover
         help="Optionally adds verbosity",
     )
     args = parser.parse_args()
-    print(f"{args.message} {args.name}!")
+    # print(f"{args.message} {args.name}!")
     if args.verbose:
         print("Verbose mode is on.")
-        logging.info("Runing the main function, Allright!")
+        # logging.basicConfig(
+        #     level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
+        # )
 
-    print("Executing main function")
-    base = BaseClass()
-    print(base.base_method())
-    print(base_function())
-    print("End of main function")
+    logging.info("Executing main function")
+    ss = StockSyncer()
+    ss.sync_equity()
+    ss.sync_mkt_equ_d()
+    logging.info("End of main function")
 
 
 if __name__ == "__main__":  # pragma: no cover

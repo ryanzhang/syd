@@ -1,10 +1,10 @@
 # -*- coding: UTF-8 -*-
 import logging
-from syd.domain import Equity, SyncStatus, TradeCalendar
+from syd.domain import Equity, MktEquDay, SyncStatus, TradeCalendar
 import pandas as pd;
 from syd.dbadaptor import DBAdaptor
 from syd.tusadaptor import TUSAdaptor
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta, date
 from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -24,26 +24,34 @@ logging.basicConfig(
     level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
 )
 
-# return tuple(str,str):
-# list[0]:ticker
-# list[1]: exchange_cd
-def tus_code_split(ts_code) ->tuple[str,str]:
-    mapper={'SZ':'XSHE', 'SH':'XSHG', 'BJ':'XBEI'}
-
-    return ts_code[0:6], mapper[ts_code[7:9]]
 
 class StockSyncer:
     def __init__(self, is_export_csv=False):
         self.tus = TUSAdaptor(is_export_csv=is_export_csv)
-        self.db = DBAdaptor(is_export_csv=is_export_csv)
+        self.db = DBAdaptor()
+        self.calendar = self.db.getDfBySql("select * from stock.trade_calendar")
         pass
+    
+    def get_trade_calendar(self) -> pd.DataFrame:
+        if self.calendar is None:
+            self.calendar = self.db.getDfBySql("select * from stock.trade_calendar")
+        return self.calendar
 
+    def is_open_day(self, thedate) -> bool: 
+        logging.info(str(thedate))
+        ret = False
+        df = self.get_trade_calendar()
+        if (df['calendar_date'] == thedate).any():
+            ret = df.loc[(df.calendar_date == thedate) & (df.exchange_cd == 'XSHG'), 'is_open']
+        # logging.info(type(ret.iloc[0]))
+        return ret.iloc[0]
+        
     #返回
     # ret1: 增量股票代码 Series
     # ret2: Cache_file list [tablename_db_timestamp.csv, tablename_tus_timestamp.csv, tablename_timestamp.csv]
     def sync_equity(self) -> tuple[pd.Series, list]:
         df_tushare, tus_csv_file  = self.tus.getStockBasicInfo()
-        df_db, db_bf_csv_file =  self.db.getDfBySql("select ticker from stock.equity")
+        df_db, db_bf_csv_file =  self.db.getDfAndCsvBySql("select ticker from stock.equity")
         df_incremental = df_tushare[~df_tushare.symbol.isin(df_db.ticker)]
 
         origin_size = df_db.shape[0]
@@ -54,13 +62,14 @@ class StockSyncer:
         for index,row in df_incremental.iterrows():
             
             e = Equity()
-            ticker,exchange_cd = tus_code_split(row['ts_code'])
+            ticker,exchange_cd = TUSAdaptor.tus_code_split(row['ts_code'])
             e.sec_id = ticker + "." + exchange_cd
             e.ticker = ticker
             e.sec_short_name = row['name']
             e.exchange_cd = exchange_cd
             e.list_sector = row['market']
             e.list_sector_cd = (lambda x:{'主板':1, '创业版':2, '科创版':4, '北交所':5}[x])(row['market'])
+            e.list_status_cd = (lambda x:{'L':'L', 'D':'DE', 'P':'S'}[x])(row['list_status'])
             e.list_date = datetime.strptime(row['list_date'], '%Y%m%d').date()
             e.delist_date = None if row['delist_date'] is None else datetime.strptime(row['delist_date'],'%Y%m%d').date() 
             e.ex_country_cd = 'CHN'
@@ -76,14 +85,14 @@ class StockSyncer:
             logging.error("Save records to Stock.equity error, the incremental \
                 records has been store to:" + export_filepath)
             raise Exception("Store incremental data to DB Error, please correct it!")
-
+        logging.info(f"equity 表更新完毕, 更新前:{origin_size},增量:{incr_size}")
         return df_incremental, [tus_csv_file, db_bf_csv_file]
 
     #返回
     # ret1: 增量股票代码 Series
     # ret2: Cache_file list [tablename_db_timestamp.csv, tablename_tus_timestamp.csv, tablename_timestamp.csv]
     def sync_trade_calendar(self) -> pd.DataFrame:
-        df_db, db_bf_csv_file =  self.db.getDfBySql("select calendar_date from stock.trade_calendar order by trade_calendar desc")
+        df_db =  self.db.getDfBySql("select calendar_date from stock.trade_calendar order by trade_calendar desc")
         if df_db is None or df_db.shape[0] == 0:
             raise Exception ("数据库状态不对，请立即检查!")
 
@@ -136,4 +145,121 @@ class StockSyncer:
 
         return df_transform
 
-    def sync_mkt_equity_d(self) ->:
+    def getLatestTradeDate(self)->datetime:
+        # ll = datetime.today().strftime('%Y%m%d')
+        today = datetime.today().date()
+        df = self.get_trade_calendar()
+        if (df['calendar_date'] == today).any():
+            ret = df.loc[(df.calendar_date == today) & (df.exchange_cd == 'XSHG'), :]
+            return ret.iloc[0]['calendar_date'] if ret.iloc[0]['is_open'] else ret.iloc[0]['prev_trade_date']
+        else:
+            raise Exception("数据库不包含今天的数据，请立即修复!")
+
+    #返回
+    # ret1: 增量股票代码 DataFrame对象
+    def fetch_latest_mkt_equity_day_data(self) ->pd.DataFrame:
+        latest_k_date = self.db.getDfBySql("select trade_date from stock.mkt_equ_day order by trade_date desc limit 1").iloc[0]['trade_date']
+
+        latest_t_date = self.getLatestTradeDate()
+
+        # start_date
+        if latest_k_date > latest_t_date:
+            raise Exception("数据库日线数据不应该有未来时数据")
+
+        fetch_date = latest_k_date + timedelta(days=1)
+        data_list=[]
+        if fetch_date > latest_t_date:
+            logging.info(f"日线数据mkt_equ_day已经更新到{latest_k_date}")
+            return pd.DataFrame()
+
+        while fetch_date <= latest_t_date:
+            #跳过不开盘的日子,避免不必要的远程调用
+            if self.is_open_day(fetch_date):
+                df1 = self.tus.getMktEquD(fetch_date)
+                df2 = self.tus.getMktEquDExtra(fetch_date)
+                df3 = self.tus.getMktEquDhfq(fetch_date)
+                df = pd.merge(df1, df2, how="left", on=["ts_code", "trade_date"])
+                df = pd.merge(df, df3, how="left", on=["ts_code", "trade_date"])
+                data_list.append(df)
+            fetch_date = fetch_date + timedelta(days=1)
+        ret = pd.concat(data_list)
+        return ret
+
+    def sync_mkt_equ_d(self):
+        df = self.fetch_latest_mkt_equity_day_data()
+        if df is None or df.shape[0] == 0:
+            logging.info("没有获取到更新数据，可能数据已经更新到最新了!")
+        else:
+            self.write_to_db(df)
+            logging.info("mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
+        
+
+    #获取日线表中没有的股票数据
+    def get_missing_equ_day_data(self)->pd.DataFrame:
+        #获取增量的股票数据
+        df_expect= self.db.getDfBySql("select sec_id, list_date from stock.equity where list_status_cd='L' ")
+        df_actual = self.db.getDfBySql("select distinct sec_id from stock.mkt_equ_day order by sec_id")
+        df_new = df_expect[~df_expect.sec_id.isin(df_actual.sec_id)]
+
+        end_date = datetime.today().date() 
+        df_new = df_new[df_new['list_date']<= end_date ]
+        logging.info(f"Found missing 股票列表: {df_new['sec_id'].astype(str).values.tolist()}")
+        logging.info("开始从tushare获取日线数据")
+        
+        df = self.tus.getMktEquDByCodeList(sec_ids=df_new['sec_id'], \
+            start_date=df_new['list_date'].min(), end_date=end_date)
+
+        return df
+
+    def write_to_db(self, df:pd.DataFrame)->bool:
+        if df is None or df.shape[0] == 0:
+            logging.info("保存0条数据到数据库。")
+            return False
+        df_equ = self.db.getDfBySql("select sec_id,ticker, sec_short_name from \
+            stock.equity where list_status_cd = 'L' ")
+        entitylist=list()
+        for index, row in df.iterrows():
+            ticker,exchange_cd = TUSAdaptor.tus_code_split(row['ts_code'])
+            k_item = MktEquDay()
+            k_item.sec_id = ticker + "." + exchange_cd
+            k_item.ticker = ticker
+            k_item.sec_short_name = df_equ.loc[df_equ.ticker == ticker, 'sec_short_name'].iloc[0]
+            k_item.exchange_cd = exchange_cd
+            k_item.trade_date = row['trade_date']
+            k_item.pre_close_price = row['pre_close']
+            k_item.open_price = row['open']
+            k_item.highest_price = row['high']
+            k_item.lowest_price = row['low']
+            k_item.close_price = row['close_x']
+            k_item.turnover_vol = row['vol']*100
+            k_item.turnover_value = row['amount']*1000
+            #dealAmount 含义不详, 已忽略
+            k_item.turnover_rate = row['turnover_rate_f']/100
+            k_item.accum_adj_bf_factor =1
+            k_item.neg_market_value = row['circ_mv']*100000000
+            k_item.market_value = row['total_mv']*100000000
+            k_item.chg_pct=row['pct_chg']
+            #静态市盈率 k_item.pe 靜態市盈率=公司總市值/去年淨利潤 
+            k_item.pe = row['pe']
+            k_item.pe1 = row['pe_ttm']
+            k_item.pb = row['pb']
+            k_item.is_open = 0 if row['open'] == 0.0 else 1
+            k_item.vwap = k_item.turnover_value/k_item.turnover_vol if k_item.is_open else 0.0
+            k_item.accum_adj_af_factor = row['adj_factor']
+            entitylist.append(k_item)
+        rc = self.db.saveAll(entitylist)
+        bf_latest_date = df.iloc[0]['trade_date'] 
+        after_latest_date = df.iloc[-1]['trade_date']
+        if not self.db.updateSyncStatus("mkt_equ_day",rc,datetime.now(), \
+            f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"):
+            logging.warning("Update sync_status table failed!")
+        
+        if not rc:
+            export_filepath = "/tmp/mkt_equ_day_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
+            df.to_csv(export_filepath)
+            logging.error("Save records to Stock.mkt_equ_day error, the incremental \
+                records has been store to:" + export_filepath)
+            raise Exception("Store incremental data to DB Error, please correct it!")
+        
+        return True
+            
