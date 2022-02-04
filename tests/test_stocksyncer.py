@@ -4,11 +4,7 @@ from syd.domain import MktIdxDay
 import pytest
 from syd.stocksyncer import *
 from datetime import datetime, date
-import logging
-
-logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-)
+from syd.logger import logger
 
 #测试equity表的更细情况
 
@@ -34,7 +30,7 @@ def test_sector_cd_lambda():
 class TestStockSync:
     @pytest.fixture(scope='class')
     def syncer(self):
-        logging.info("Setup for Class")
+        logger.info("Setup for Class")
         syncer = StockSyncer(is_export_csv=True)
         return syncer 
 
@@ -46,7 +42,7 @@ class TestStockSync:
     def test_equity_has_been_sync_to_latest(self, syncer:StockSyncer, db:DBAdaptor):
         df_incremental, export_csv_list =syncer.sync_equity()
 
-        logging.info("exported csv:" + str(export_csv_list))
+        logger.info("exported csv:" + str(export_csv_list))
 
         df_tus = pd.read_csv(export_csv_list[0])
         df_db_bf = pd.read_csv(export_csv_list[1])
@@ -74,7 +70,7 @@ class TestStockSync:
         if df_incremental.shape[0] != 0:
             assert df_db.iloc[0]['calendar_date'] == df_incremental.index[-1], "最新的日期已经同步到数据库中"
         else:
-            logging.info("trade_calendar已经更新到今年最后一天了")
+            logger.info("trade_calendar已经更新到今年最后一天了")
 
         df_db_sync = db.getDfBySql("select * from stock.sync_status where table_name= 'trade_calendar'")
         assert df_db_sync is not None
@@ -83,7 +79,7 @@ class TestStockSync:
 
     def test_get_latest_trade_date(self, syncer:StockSyncer):
         ret = syncer.getLatestTradeDate() 
-        logging.info("最后一个交易日:" + str(ret))
+        logger.info("最后一个交易日:" + str(ret))
         assert ret  <= datetime.today().date()
 
     def test_is_a_date_open_or_not(self, syncer:StockSyncer):

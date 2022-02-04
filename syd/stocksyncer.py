@@ -82,9 +82,12 @@ class StockSyncer:
     def sync_trade_calendar(self) -> pd.DataFrame:
         df_db =  self.db.getDfBySql("select calendar_date from stock.trade_calendar order by trade_calendar desc")
         if df_db is None or df_db.shape[0] == 0:
-            raise Exception ("数据库状态不对，请立即检查!")
+            raise Exception ("数据库trade_calendar状态不对，请立即检查!")
 
         bf_latest_date = df_db.iloc[0]['calendar_date'] 
+        if bf_latest_date > datetime.today().date():
+            logger.debug("trade_calendar已经是最新状态，无需更新..")
+            return pd.DataFrame()
         start_date = bf_latest_date + timedelta(days=1)
         #默认只取'SSE'上海交易所的交易日期，不再单独保存深圳交易所的交易日期
         df_tushare, tus_csv_file  = self.tus.getTradeCal(start_date)
@@ -178,6 +181,9 @@ class StockSyncer:
         if df is None or df.shape[0] == 0:
             logger.info("没有获取到更新数据，可能数据已经更新到最新了!")
         else:
+            file_suffix = datetime.now().strftime("%Y%m%d%H%M%S")
+            df.to_pickle(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".pkl")     
+            df.to_csv(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".csv")     
             self.write_to_db(df)
             logger.info("mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
         
@@ -204,14 +210,21 @@ class StockSyncer:
             logger.info("保存0条数据到数据库。")
             return False
         df_equ = self.db.getDfBySql("select sec_id,ticker, sec_short_name from \
-            stock.equity where list_status_cd = 'L' ")
+            stock.equity")
         entitylist=list()
         for index, row in df.iterrows():
             ticker,exchange_cd = TUSAdaptor.tus_code_split(row['ts_code'])
             k_item = MktEquDay()
             k_item.sec_id = ticker + "." + exchange_cd
             k_item.ticker = ticker
-            k_item.sec_short_name = df_equ.loc[df_equ.ticker == ticker, 'sec_short_name'].iloc[0]
+
+            # sec_short_name
+            df_sec_name = df_equ.loc[df_equ.ticker == ticker, 'sec_short_name']  
+            if df_sec_name is not None and df_sec_name.shape[0]==1:
+                k_item.sec_short_name = df_sec_name.iloc[0]
+            else:
+                logger.error(f"没有在equity表中找到{ticker}对应的股票名称, 请稍后核查!")
+            
             k_item.exchange_cd = exchange_cd
             k_item.trade_date = row['trade_date']
             k_item.pre_close_price = row['pre_close']

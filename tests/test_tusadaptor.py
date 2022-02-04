@@ -3,9 +3,7 @@ from syd.dbadaptor import DBAdaptor
 import pytest
 from syd.tusadaptor import TUSAdaptor
 import os
-import logging
 
-from syd.config import AppConfig
 from syd.logger import logger
 from syd.config import configs
 
@@ -14,11 +12,11 @@ skipif = pytest.mark.skipif
 skip = pytest.mark.skip
 xfail = pytest.mark.xfail
 
-expect_cache_filepath=AppConfig.cache_folder + "tus_stock_basic.pkl"
+expect_cache_filepath=configs["cache_folder"].data + "tus_stock_basic.pkl"
 class TestTUSAdaptor:
     @pytest.fixture(scope='class')
     def tus(self):
-        logging.info("Setup for Class")
+        logger.info("Setup for Class")
         tus = TUSAdaptor(is_use_cache=True, is_export_csv=True)
         return tus
 

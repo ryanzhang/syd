@@ -8,4 +8,5 @@ def test_properties_been_load():
     assert configs.get("postgres_password").data== "password"
     assert configs.get("postgres_database").data== "market"
     assert configs.get("tus_token").data != ""
-    assert configs.get("logging_level").data != ""
+    assert configs.get("log_level").data != ""
+    assert configs.get("something_not_exists") is None

@@ -81,8 +81,8 @@ class DBAdaptor:
             if df is None or df.shape[0]== 0:
                 logger.warning("there is no data,pls check your query:" + query_sql)
             else:
-                logger.debug(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
                 if self.is_use_cache:
+                    logger.debug(f"DF Size: {df.size}  Cache file: {df_cache_file} is_use_cache: {self.is_use_cache}")
                     df.to_pickle(df_cache_file)
 
         return df

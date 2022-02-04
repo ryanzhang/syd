@@ -50,6 +50,7 @@ def main() -> None:  # pragma: no cover
 
     logger.info("Executing main function")
     ss = StockSyncer()
+    ss.sync_trade_calendar()
     ss.sync_equity()
     ss.sync_mkt_equ_d()
     logger.info("End of main function")

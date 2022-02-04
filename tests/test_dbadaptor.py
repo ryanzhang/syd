@@ -1,28 +1,23 @@
 import datetime
 import pytest
 from syd.dbadaptor import DBAdaptor
+from syd.logger import logger
+from syd.config import configs
 import os
-import logging
 
-from syd.config import AppConfig
-
-logging.basicConfig(
-    level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-)
 
 given = pytest.mark.parametrize
 skipif = pytest.mark.skipif
 skip = pytest.mark.skip
 xfail = pytest.mark.xfail
 
-logging.info("Start Testing")
 
 query_sql = "select * from stock.equity"
-expect_cache_file_path = AppConfig.cache_folder + DBAdaptor.calculateCacheFilename(query_sql) + ".pkl"
+expect_cache_file_path = configs["cache_folder"].data + DBAdaptor.calculateCacheFilename(query_sql) + ".pkl"
 class TestDBAdaptor:
     @pytest.fixture(scope='class')
     def db(self):
-        logging.info("Setup for Class")
+        logger.info("Setup for Class")
         print("Setup for Class")
         db = DBAdaptor(is_use_cache=True)
         if os.path.exists(expect_cache_file_path):
@@ -67,3 +62,11 @@ class TestDBAdaptor:
         assert 0 ==df_dup.shape[0]
         # for index in df_dup.id:
         #     db.deleteById(MktIdxDay, index)
+
+    def test_load_equity(self, db):
+        df_equ = db.getDfBySql("select sec_id,ticker, sec_short_name from \
+            stock.equity")
+        assert df_equ is not None and df_equ.shape[0]>0
+        logger.info(f"stock account:{df_equ.shape[0]}")
+        ticker="301217"
+        assert df_equ.loc[df_equ.ticker == ticker, 'sec_short_name'].iloc[0] =="铜冠铜箔"
