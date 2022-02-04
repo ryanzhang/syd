@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 # 提供缓存能力，避免反复从远端拉数据库
-from syd.domain import SyncStatus
+from syd.domain import Fund, SyncStatus
 from typing import Any
 import pandas as pd
 from datetime import datetime, timedelta
@@ -86,6 +86,9 @@ class DBAdaptor:
                     df.to_pickle(df_cache_file)
 
         return df
+    def getSyncStatusByTablename(self, tablename):
+        session = Session(self.engine)
+        return session.query(SyncStatus).filter(SyncStatus.table_name==tablename)
 
     def save(self, entity)->bool:
         try:
@@ -122,16 +125,22 @@ class DBAdaptor:
             return False
         return True
 
-    # def updateById(self,entity)-> bool:
-    #     try:
-    #         session = Session(self.engine)
-    #         session.add(entity)
-    #         session.commit()
-    #     except Exception as e:
-    #         logger.error("Save record to db error" + traceback.format_exc())
-    #         logger.error("Exception is: " + str(e) ) 
-    #         return False
-    #     return True
+    def updateAnyeByTicker(self,cls, update_dict:dict)-> bool:
+        try:
+            session = Session(self.engine)
+            for key, value in update_dict.items():
+               result = session.query(cls).filter(cls.ticker==key)
+               if result is None:
+                   logger.warning(f"{key} 不存在于Fund表中，请检查！")
+                   continue
+               result.update(value)
+
+            session.commit()
+        except Exception as e:
+            logger.error("Update record to db {cls} error" + traceback.format_exc())
+            logger.error("Exception is: " + str(e) ) 
+            return False
+        return True
 
     def deleteById(self, cls, id)->bool:
         try:

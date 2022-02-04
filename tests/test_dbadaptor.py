@@ -1,4 +1,5 @@
 import datetime
+from syd.domain import Fund
 import pytest
 from syd.dbadaptor import DBAdaptor
 from syd.logger import logger
@@ -70,3 +71,15 @@ class TestDBAdaptor:
         logger.info(f"stock account:{df_equ.shape[0]}")
         ticker="301217"
         assert df_equ.loc[df_equ.ticker == ticker, 'sec_short_name'].iloc[0] =="铜冠铜箔"
+
+    def test_update_any_by_ticker(self):
+        update_dict = {
+            '501216': {'list_status_cd':'L'},
+            '513300': {'list_status_cd':'L'},
+            '517200': {'list_status_cd':'L'}
+        }
+        db = DBAdaptor()
+        db.updateAnyeByTicker(Fund, update_dict)
+        df = db.getDfBySql("select ticker, list_status_cd from stock.fund where ticker in ('501216', '513300', '517200') ")
+        logger.info(str(df))
+        assert df.loc[df['list_status_cd'] != 'L',:].shape[0]==0

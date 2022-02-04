@@ -1,6 +1,8 @@
-from syd.config import configs
+from syd.config import *
+from syd.logger import logger
 
 def test_properties_been_load():
+    logger.info(type(default_setting))
     assert configs is not None
     assert configs.get("postgres_host").data== "pg-quant-invest"
     assert configs["postgres_port"].data == "5432"
@@ -10,3 +12,6 @@ def test_properties_been_load():
     assert configs.get("tus_token").data != ""
     assert configs.get("log_level").data != ""
     assert configs.get("something_not_exists") is None
+    assert configs["remote_api_cache_csv"].data == "True"
+    assert bool(configs["remote_api_cache_csv"].data)
+    assert bool(configs["remote_api_cache_pkl"].data)

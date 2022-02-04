@@ -32,6 +32,7 @@ class TestStockSync:
     def syncer(self):
         logger.info("Setup for Class")
         syncer = StockSyncer(is_export_csv=True)
+        db =DBAdaptor()
         return syncer 
 
     @pytest.fixture(scope='class')
@@ -206,8 +207,35 @@ class TestStockSync:
         syncer.sync_mkt_equ_d()
     
     def test_get_equ_name(self):
-        db =DBAdaptor()
         df_equ = db.getDfBySql("select sec_id,ticker, sec_short_name from \
             stock.equity where list_status_cd = 'L' ")
         ticker="870204"
         assert "沪江材料" == df_equ.loc[df_equ.ticker == ticker, 'sec_short_name'].iloc[0]
+
+    @skip
+    def test_sync_mkt_fund_day(self, syncer:StockSyncer, db:DBAdaptor):
+        # syncer.sync_fund_day()
+        # df = syncer.fetch_remote_fund_day_data()
+        # df = pd.read_pickle(configs["cache_folder"].data + "sync_fund_day_20220204222828.pkl")
+        # df['ticker'] =df['ts_code'][0:6]
+        # assert df is not None and df.shape[0]>0
+        # logger.info(f"获取到基金日行情行数: {df.shape[0]}")
+
+        # rc = syncer.write_fund_day_to_db(df)
+        status = db.getSyncStatusByTablename("fund_day")
+        logger.info(status)
+        assert status.rc 
+        assert status.update_time == datetime.today().date()
+        assert status.comment != ""
+
+    def test_verify_integrity_fund_day(self, db:DBAdaptor):
+        df = db.getDfBySql("select sec_id, ticker from stock.fund_day where trade_date='20220118'")
+        df_fund = db.getDfBySql("select distinct ticker, sec_short_name from \
+            stock.fund where list_status_cd='L'")
+        df_outlier=df[~df.ticker.isin(df_fund.ticker)]
+        df_outlier.to_csv("/tmp/fund_outlier.csv")
+
+    def test_sync_mkt_idx_day(self, syncer:StockSyncer, db:DBAdaptor):
+        pass
+        # db.getDfBySql("select ")
+

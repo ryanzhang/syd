@@ -139,7 +139,6 @@ class TUSAdaptor:
                 time.sleep(2)
             else:
                 break
-        # df.sort_values(['ts_code', 'trade_date'], inplace=True)
         return df
 
     def getMktEquDhfq(self, trade_date:datetime, ts_code=""):
@@ -198,6 +197,7 @@ class TUSAdaptor:
                 break
         return df
 
+    #Deprecated
     #后复权行情 从老接口获取, 直接调用ts 而不是pro_api
     def getMktEquDAdjAf(self, code_list, start_date):
         df = pd.DataFrame()
@@ -211,3 +211,52 @@ class TUSAdaptor:
         df.sort_values(['ts_code', 'trade_date'], inplace=True)
         return df
 
+
+    #后复权行情 从老接口获取, 直接调用ts 而不是pro_api
+    def getFundDAdjAf(self, code_list, start_date):
+        df = pd.DataFrame()
+        for code in code_list:
+            ts_code = code[0:6] + "." + TUSAdaptor.db_code_mapper[code[7:11]]
+            df_item = ts.pro_bar(ts_code=ts_code, adj='hfq', \
+                start_date=start_date.strftime('%Y%m%d'))
+                   
+            df = pd.concat([df, df_item])
+        
+        df.sort_values(['ts_code', 'trade_date'], inplace=True)
+        return df
+
+
+    #获取一天的交易数据
+    #一天一个账户不能超过50次
+    def getFundDaily(self, trade_date:datetime, ts_code="" ):
+
+        df = pd.DataFrame()
+        # 允许重试3次
+        for count in range(3):
+            try:
+                logger.debug("Loading Data from tushare fund_daily interface remotely::" )
+                df= self.conn.fund_daily(ts_code=ts_code, trade_date=trade_date.strftime('%Y%m%d'))
+            except:
+                logger.info(f"{trade_date} 日期数据 重试{count}次...")
+                if count == 2:
+                    raise Exception("重试3次仍然失败，终止运行!")
+                time.sleep(2)
+            else:
+                break
+        return df
+
+    def getFundDayhfq(self, trade_date:datetime, ts_code=""):
+        df = pd.DataFrame()
+        # 允许重试3次
+        for count in range(3):
+            try:
+                logger.debug("Loading Data from tushare fund_adj interface remotely::" )
+                df= self.conn.fund_adj(ts_code=ts_code, trade_date=trade_date.strftime('%Y%m%d') )
+            except:
+                logger.info(f"{trade_date} 日期数据 重试{count}次...")
+                if count == 2:
+                    raise Exception("重试3次仍然失败，终止运行!")
+                time.sleep(2)
+            else:
+                break
+        return df

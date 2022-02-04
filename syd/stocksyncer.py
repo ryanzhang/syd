@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-from syd.domain import Equity, MktEquDay,  TradeCalendar
+from syd.domain import Equity, Fund, FundDay, MktEquDay,  TradeCalendar
 import pandas as pd;
 from syd.dbadaptor import DBAdaptor
 from syd.tusadaptor import TUSAdaptor
@@ -26,7 +26,6 @@ class StockSyncer:
         return self.calendar
 
     def is_open_day(self, thedate) -> bool: 
-        logger.info(str(thedate))
         ret = False
         df = self.get_trade_calendar()
         if (df['calendar_date'] == thedate).any():
@@ -182,10 +181,12 @@ class StockSyncer:
             logger.info("没有获取到更新数据，可能数据已经更新到最新了!")
         else:
             file_suffix = datetime.now().strftime("%Y%m%d%H%M%S")
-            df.to_pickle(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".pkl")     
-            df.to_csv(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".csv")     
+            if bool(configs["remote_api_cache_pkl"].data):
+                df.to_pickle(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".pkl")     
+            if bool(configs["remote_api_cache_csv"].data):
+                df.to_csv(configs["cache_folder"].data + "sync_mkt_equ_d_" + file_suffix +".csv")     
             self.write_to_db(df)
-            logger.info("mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
+            logger.info(f"mkt_equ_d表更新完毕, 增加记录{df.shape[0]}条!")
         
 
     #获取日线表中没有的股票数据
@@ -255,12 +256,99 @@ class StockSyncer:
             f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"):
             logger.warning("Update sync_status table failed!")
         
-        if not rc:
-            export_filepath = "/tmp/mkt_equ_day_sync_" + datetime.now().strftime("%Y%m%d%H%M%S") +".csv"
-            df.to_csv(export_filepath)
-            logger.error("Save records to Stock.mkt_equ_day error, the incremental \
-                records has been store to:" + export_filepath)
-            raise Exception("Store incremental data to DB Error, please correct it!")
+        return True
+
+    def sync_fund_day(self):
+        df = self.fetch_remote_fund_day_data()
+        if df is None or df.shape[0] == 0:
+            logger.info("没有获取到更新数据，可能数据已经更新到最新了!")
+        else:
+            file_suffix = datetime.now().strftime("%Y%m%d%H%M%S")
+            if bool(configs["remote_api_cache_pkl"].data):
+                df.to_pickle(configs["cache_folder"].data + "sync_fund_day_" + file_suffix +".pkl")     
+            if bool(configs["remote_api_cache_csv"].data):
+                df.to_csv(configs["cache_folder"].data + "sync_fund_day_" + file_suffix +".csv")     
+            self.write_fund_day_to_db(df)
+            logger.info(f"fund_day表更新完毕, 增加记录{df.shape[0]}条!")
+        
+    def fetch_remote_fund_day_data(self)->pd.DataFrame:
+        latest_k_date = self.db.getDfBySql("select max(trade_date) as trade_date \
+            from stock.fund_day").iloc[0]['trade_date']
+
+        latest_t_date = self.getLatestTradeDate()
+
+        # start_date
+        if latest_k_date > latest_t_date:
+            raise Exception("数据库日线数据不应该有未来时数据")
+
+        fetch_date = latest_k_date + timedelta(days=1)
+        data_list=[]
+        if fetch_date > latest_t_date:
+            logger.info(f"日线数据mkt_equ_day已经更新到{latest_k_date}")
+            return pd.DataFrame()
+
+        while fetch_date <= latest_t_date:
+            #跳过不开盘的日子,避免不必要的远程调用
+            if self.is_open_day(fetch_date):
+                df1 = self.tus.getFundDaily(fetch_date)
+                df2 = self.tus.getFundDayhfq(fetch_date)
+                df = pd.merge(df1, df2, how="left", on=["ts_code", "trade_date"])
+                data_list.append(df)
+            fetch_date = fetch_date + timedelta(days=1)
+        ret = pd.concat(data_list)
+        return ret
+        
+
+    def write_fund_day_to_db(self, df:pd.DataFrame)->bool:
+        if df is None or df.shape[0] == 0:
+            logger.info("保存0条数据到数据库。")
+            return False
+        df_fund = self.db.getDfBySql("select distinct ticker, sec_short_name from \
+            stock.fund where list_status_cd='L'")
+        df['ticker'] =df['ts_code'][0:6]
+        df_outlier = df[~df.ticker.isin(df_fund.ticker)]
+        update_dict=dict()
+        for index, row in df_outlier.iterrows():
+            update_dict[row['ticker']]={'list_status_cd':'L'}
+
+        self.db.updateAnyeByTicker(Fund, update_dict )
+
+        df_fund = self.db.getDfBySql("select distinct ticker, sec_short_name from \
+            stock.fund where list_status_cd='L'")
+
+        entitylist=list()
+        for index, row in df.iterrows():
+            ticker,exchange_cd = TUSAdaptor.tus_code_split(row['ts_code'])
+            k_item = FundDay()
+            k_item.sec_id = ticker + "." + exchange_cd
+            k_item.ticker = ticker
+
+            # sec_short_name
+            df_sec_name = df_fund.loc[df_fund.ticker == ticker, 'sec_short_name']  
+            if df_sec_name is not None and df_sec_name.shape[0]==1:
+                k_item.sec_short_name = df_sec_name.iloc[0]
+            else:
+                logger.error(f"没有在fund表中找到{ticker}对应的股票名称, 请稍后核查!")
+            
+            k_item.exchange_cd = exchange_cd
+            k_item.trade_date = row['trade_date']
+            k_item.pre_close_price = row['pre_close']
+            k_item.open_price = row['open']
+            k_item.highest_price = row['high']
+            k_item.lowest_price = row['low']
+            k_item.close_price = row['close']
+            k_item.turnover_vol = row['vol']*100
+            k_item.turnover_value = row['amount']*1000
+            k_item.chg_pct=row['pct_chg']
+            k_item.accum_adj_factor = row['adj_factor']
+
+            entitylist.append(k_item)
+        rc = self.db.saveAll(entitylist)
+        bf_latest_date = df.iloc[0]['trade_date'] 
+        after_latest_date = df.iloc[-1]['trade_date']
+        if not self.db.updateSyncStatus("fund_day",rc,datetime.now(), \
+            f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"):
+            logger.warning("Update sync_status table failed!")
         
         return True
-            
+

@@ -53,6 +53,7 @@ def main() -> None:  # pragma: no cover
     ss.sync_trade_calendar()
     ss.sync_equity()
     ss.sync_mkt_equ_d()
+    ss.sync_fund_day()
     logger.info("End of main function")
 
 
