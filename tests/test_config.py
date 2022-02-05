@@ -16,3 +16,6 @@ def test_properties_been_load():
     assert configs["remote_api_cache_csv"].data == "True"
     assert bool(configs["remote_api_cache_csv"].data)
     assert bool(configs["remote_api_cache_pkl"].data)
+    assert not bool(configs["log_output_path"].data)
+
+    

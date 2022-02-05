@@ -2,8 +2,8 @@
 import sys
 import pytest
 from syd.logger import logger
+# import logging
 
-# # 初始化日志
 # logging.basicConfig(
 #     level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
 # )

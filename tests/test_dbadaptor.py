@@ -1,5 +1,5 @@
 import datetime
-from syd.domain import Fund
+from syd.domain import Fund, SyncStatus
 import pytest
 from syd.dbadaptor import DBAdaptor
 from syd.logger import logger
@@ -99,3 +99,10 @@ class TestDBAdaptor:
         )
         logger.info(str(df))
         assert df.loc[df["list_status_cd"] != "L", :].shape[0] == 0
+
+    def test_get_any_by_id(self, db:DBAdaptor):
+        ret = db.getAnyById(SyncStatus, 1)
+        logger.info(type(ret))
+        assert ret is not None
+        # assert ret.tablename 
+

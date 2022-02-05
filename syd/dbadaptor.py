@@ -25,7 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session, relationship
 
-from syd.domain import Fund, SyncStatus
+from syd.domain import SyncStatus
 
 Base = declarative_base()
 
@@ -116,10 +116,10 @@ class DBAdaptor:
 
         return df
 
-    def getSyncStatusByTablename(self, tablename):
+    def getAnyById(self, cls, id):
         session = Session(self.engine)
-        return session.query(SyncStatus).filter(
-            SyncStatus.table_name == tablename
+        return session.query(cls).filter(
+            cls.id == id
         )
 
     def save(self, entity) -> bool:
@@ -167,7 +167,7 @@ class DBAdaptor:
             for key, value in update_dict.items():
                 result = session.query(cls).filter(cls.ticker == key)
                 if result is None:
-                    logger.warning(f"{key} 不存在于Fund表中，请检查！")
+                    logger.warning(f"{key} 不存在于{cls}表中，请检查！")
                     continue
                 result.update(value)
 
