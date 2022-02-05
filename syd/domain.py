@@ -5,26 +5,13 @@ from sqlalchemy import (
     Column,
     DateTime,
     Float,
-    ForeignKey,
     Integer,
     Sequence,
     String,
-    and_,
-    create_engine,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, relationship
-
-# postgres_host = "192.168.2.13"               # 数据库地址
-postgres_host = "pg-quant-invest"  # 数据库地址
-postgres_port = "5432"  # 数据库端口
-postgres_user = "postgres"  # 数据库用户名
-postgres_password = "password"  # 数据库密码
-postgres_database = "market"  # 数据库名字
-db_string = f"postgresql://{postgres_user}:{postgres_password}@{postgres_host}:{postgres_port}/{postgres_database}"
 
 Base = declarative_base()
-
 
 class Equity(Base):
     __tablename__ = "equity"

@@ -25,7 +25,6 @@ class TestDBAdaptor:
     @pytest.fixture(scope="class")
     def db(self):
         logger.info("Setup for Class")
-        print("Setup for Class")
         db = DBAdaptor(is_use_cache=True)
         if os.path.exists(expect_cache_file_path):
             os.remove(expect_cache_file_path)
