@@ -1,10 +1,11 @@
 # -*- coding: UTF-8 -*-
-import argparse # pragma: no cover
+import argparse  # pragma: no cover
+
 from syd.logger import logger
 from syd.stocksyncer import StockSyncer  # pragma: no cover
 
-
 from . import BaseClass, base_function  # pragma: no cover
+
 
 def main() -> None:  # pragma: no cover
     """
