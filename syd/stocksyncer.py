@@ -339,7 +339,7 @@ class StockSyncer:
             k_item.accum_adj_bf_factor = 1
             k_item.neg_market_value = row["circ_mv"] * 100000000
             k_item.market_value = row["total_mv"] * 100000000
-            k_item.chg_pct = row["pct_chg"]
+            k_item.chg_pct = row["pct_chg"]/100
             # 静态市盈率 k_item.pe 靜態市盈率=公司總市值/去年淨利潤
             k_item.pe = row["pe"]
             k_item.pe1 = row["pe_ttm"]
