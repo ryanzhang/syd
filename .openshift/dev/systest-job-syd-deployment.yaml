@@ -3,7 +3,7 @@ kind: Job
 metadata:
   annotations:
     image.openshift.io/triggers: "null"
-  name: debug-syd
+  name: systest-syd
   namespace: classic-dev
 spec:
   parallelism: 1    
