@@ -1,9 +1,9 @@
 import datetime
-from syd.domain import Fund, SyncStatus
+from syd.domain import Equity, Fund, SyncStatus
 import pytest
-from syd.dbadaptor import DBAdaptor
-from syd.logger import logger
-from syd.config import configs
+from kupy.dbadaptor import DBAdaptor
+from kupy.logger import logger
+from kupy.config import configs
 import os
 
 
@@ -15,8 +15,8 @@ xfail = pytest.mark.xfail
 
 query_sql = "select * from stock.equity"
 expect_cache_file_path = (
-    configs["cache_folder"].data
-    + DBAdaptor.calculateCacheFilename(query_sql)
+    configs["data_folder"].data + "cache/"
+    + DBAdaptor.get_hash_filename(query_sql)
     + ".pkl"
 )
 
@@ -31,39 +31,44 @@ class TestDBAdaptor:
         return db
 
     def test_cache_file_name(self, db):
-        cache1 = db.calculateCacheFilename("select * from stock.equity")
+        cache1 = db.get_hash_filename("select * from stock.equity")
 
         assert 5 == len(cache1)
-        cache2 = db.calculateCacheFilename("select * from stock.fund")
+        cache2 = db.get_hash_filename("select * from stock.fund")
         assert 5 == len(cache2)
         assert cache1 != cache2
 
     def test_get_equity_without_cache(self, db):
-        db.setCacheMode(False)
-        df, csv_file = db.getDfAndCsvBySql(query_sql)
+        db.set_cache_mode(False)
+        df, csv_file = db.get_df_csv_by_sql(query_sql)
         assert df is not None
         assert csv_file is not None
         assert not os.path.exists(expect_cache_file_path)
         assert os.path.exists(csv_file)
 
     def test_get_equity_with_cache(self, db):
-        db.setCacheMode(True)
-        df, csv_file = db.getDfAndCsvBySql(query_sql)
+        db.set_cache_mode(True)
+        df, csv_file = db.get_df_csv_by_sql(query_sql)
         assert df is not None
         assert csv_file is not None
         assert os.path.exists(expect_cache_file_path)
         assert os.path.exists(csv_file)
 
-    def test_update_sync_status(self, db):
-        # db.setCacheMode(True)
-        assert db.updateSyncStatus(
-            "equity", True, datetime.datetime.now(), "更新前:55,增量:10"
+    def test_update_sync_status(self, db:DBAdaptor):
+        # db.set_cache_mode(True)
+        assert db.update_any_by_id(
+            SyncStatus,
+            1, {
+                "rc":True,
+                "update_time":datetime.datetime.now(),
+                "comment":"更新前:55,增量:10"
+            }
         )
 
     @skip
     # Caution when you delete your data
     def test_no_duplicate(self, db):
-        df_mkt_idx_d = db.getDfBySql("select * from stock.mkt_idx_day")
+        df_mkt_idx_d = db.get_df_by_sql("select * from stock.mkt_idx_day")
         df_mkt_idx_d.sort_values(["index_id", "trade_date"], inplace=True)
 
         df_dup = df_mkt_idx_d[
@@ -74,7 +79,7 @@ class TestDBAdaptor:
         #     db.deleteById(MktIdxDay, index)
 
     def test_load_equity(self, db):
-        df_equ = db.getDfBySql(
+        df_equ = db.get_df_by_sql(
             "select sec_id,ticker, sec_short_name from \
             stock.equity"
         )
@@ -93,16 +98,16 @@ class TestDBAdaptor:
             "517200": {"list_status_cd": "L"},
         }
         db = DBAdaptor()
-        db.updateAnyeByTicker(Fund, update_dict)
-        df = db.getDfBySql(
+        db.update_any_by_ticker(Fund, update_dict)
+        df = db.get_df_by_sql(
             "select ticker, list_status_cd from stock.fund where ticker in ('501216', '513300', '517200') "
         )
         logger.info(str(df))
         assert df.loc[df["list_status_cd"] != "L", :].shape[0] == 0
 
     def test_get_any_by_id(self, db:DBAdaptor):
-        ret = db.getAnyById(SyncStatus, 1)
-        logger.info(type(ret))
-        assert ret is not None
-        # assert ret.tablename 
+        ss = db.get_any_by_id(SyncStatus, 1)
+        assert ss is not None
+        assert ss.table_name == "equity" 
+        assert ss.rc
 

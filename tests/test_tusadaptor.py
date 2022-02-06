@@ -1,20 +1,20 @@
 from datetime import date, datetime, timedelta
-from syd.dbadaptor import DBAdaptor
+from kupy.dbadaptor import DBAdaptor
 import pytest
 from syd.tusadaptor import TUSAdaptor
 import os
 
-from syd.logger import logger
-from syd.config import configs
+from kupy.logger import logger
+from kupy.config import configs
 
 given = pytest.mark.parametrize
 skipif = pytest.mark.skipif
 skip = pytest.mark.skip
 xfail = pytest.mark.xfail
 
-expect_cache_filepath = configs["cache_folder"].data + "tus_stock_basic.pkl"
+expect_cache_filepath = configs["data_folder"].data + "cache/tus_stock_basic.pkl"
 
-
+@skip
 class TestTUSAdaptor:
     @pytest.fixture(scope="class")
     def tus(self):
@@ -44,7 +44,7 @@ class TestTUSAdaptor:
     def test_get_mkt_equ_d_by_codelist(self, tus: TUSAdaptor):
         trade_date = date(2022, 1, 28)
         db = DBAdaptor()
-        df_expect = db.getDfBySql(
+        df_expect = db.get_df_by_sql(
             "select id, sec_id, list_date from stock.equity where list_status_cd='L' and exchange_cd='XSHG' order by id desc limit 2"
         )
         start_date = df_expect["list_date"].min()
@@ -61,7 +61,7 @@ class TestTUSAdaptor:
     # @skip
     # def test_get_stock_basic_without_cache(self,tus):
     #     #默认是没有cache的
-    #     tus.setCacheMode(False)
+    #     tus.set_cache_mode(False)
     #     df,csv_filepath = tus.getStockBasicInfo()
     #     assert df is not None
     #     assert csv_filepath is None

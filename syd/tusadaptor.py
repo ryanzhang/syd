@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import tushare as ts
 
-from syd.config import configs
-from syd.logger import logger
+from kupy.config import configs
+from kupy.logger import logger
 
 logger.basicConfig(
     level=logger.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
@@ -37,7 +37,7 @@ class TUSAdaptor:
     def ts_code_to_sec_id(ts_code) -> str:
         return ts_code[0:6] + "." + TUSAdaptor.ts_code_mapper[ts_code[7:9]]
 
-    def setCacheMode(self, is_use_cache):
+    def set_cache_mode(self, is_use_cache):
         self.is_use_cache = is_use_cache
 
     def getStockBasicInfo(self) -> tuple[pd.DataFrame, str]:

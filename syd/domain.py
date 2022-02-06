@@ -218,7 +218,6 @@ class SyncStatus(Base):
 
     id = Column(
         Integer,
-        Sequence("sync_status_id_seq", schema="stock"),
         primary_key=True,
     )
     rc = Column(Boolean)

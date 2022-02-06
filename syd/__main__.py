@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 import argparse  # pragma: no cover
 
-from syd.logger import logger
+from kupy.logger import logger
 from syd.stocksyncer import StockSyncer  # pragma: no cover
 
 from . import BaseClass, base_function  # pragma: no cover

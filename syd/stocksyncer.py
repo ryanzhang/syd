@@ -5,10 +5,10 @@ import pandas as pd
 from sqlalchemy.ext.declarative import declarative_base
 
 # from  pandas.tseries.offsets import MonthEnd, YearEnd
-from syd.config import configs
-from syd.dbadaptor import DBAdaptor
-from syd.domain import Equity, Fund, FundDay, MktEquDay, TradeCalendar
-from syd.logger import logger
+from kupy.config import configs
+from kupy.dbadaptor import DBAdaptor
+from syd.domain import Equity, Fund, FundDay, MktEquDay, SyncStatus, TradeCalendar
+from kupy.logger import logger
 from syd.tusadaptor import TUSAdaptor
 
 Base = declarative_base()
@@ -18,14 +18,14 @@ class StockSyncer:
     def __init__(self, is_export_csv=False):
         self.tus = TUSAdaptor(is_export_csv=is_export_csv)
         self.db = DBAdaptor()
-        self.calendar = self.db.getDfBySql(
+        self.calendar = self.db.get_df_by_sql(
             "select * from stock.trade_calendar"
         )
         pass
 
     def get_trade_calendar(self) -> pd.DataFrame:
         if self.calendar is None:
-            self.calendar = self.db.getDfBySql(
+            self.calendar = self.db.get_df_by_sql(
                 "select * from stock.trade_calendar"
             )
         return self.calendar
@@ -46,7 +46,7 @@ class StockSyncer:
     # ret2: Cache_file list [tablename_db_timestamp.csv, tablename_tus_timestamp.csv, tablename_timestamp.csv]
     def sync_equity(self) -> tuple[pd.Series, list]:
         df_tushare, tus_csv_file = self.tus.getStockBasicInfo()
-        df_db, db_bf_csv_file = self.db.getDfAndCsvBySql(
+        df_db, db_bf_csv_file = self.db.get_df_csv_by_sql(
             "select ticker from stock.equity"
         )
         df_incremental = df_tushare[~df_tushare.symbol.isin(df_db.ticker)]
@@ -82,8 +82,12 @@ class StockSyncer:
 
         rc = self.db.saveAll(entitylist)
         # Start to update update table
-        if not self.db.updateSyncStatus(
-            "equity", rc, datetime.now(), f"更新前:{origin_size},增量:{incr_size}"
+        if not self.db.update_any_by_id(
+            SyncStatus, 1, {
+                'rc':rc,
+                'update_time': datetime.now(),
+                'comment': f"更新前:{origin_size},增量:{incr_size}"
+            }
         ):
             logger.warning("Update sync_status table failed!")
         if not rc:
@@ -108,7 +112,7 @@ class StockSyncer:
     # ret1: 增量股票代码 Series
     # ret2: Cache_file list [tablename_db_timestamp.csv, tablename_tus_timestamp.csv, tablename_timestamp.csv]
     def sync_trade_calendar(self) -> pd.DataFrame:
-        df_db = self.db.getDfBySql(
+        df_db = self.db.get_df_by_sql(
             "select calendar_date from stock.trade_calendar order by trade_calendar desc"
         )
         if df_db is None or df_db.shape[0] == 0:
@@ -176,11 +180,13 @@ class StockSyncer:
         after_latest_date = df_tushare.iloc[-1]["cal_date"].date()
         rc = self.db.saveAll(entitylist)
         # Start to update update table
-        if not self.db.updateSyncStatus(
-            "trade_calendar",
-            rc,
-            datetime.now(),
-            f"更新前:{bf_latest_date},更新后:{after_latest_date}",
+        if not self.db.update_any_by_id(
+            SyncStatus,
+            9, {
+                'rc':rc,
+                'update_time': datetime.now(),
+                'comment': f"更新前:{bf_latest_date},更新后:{after_latest_date}",
+            }
         ):
             logger.warning("Update sync_status table failed!")
         if not rc:
@@ -221,7 +227,7 @@ class StockSyncer:
     # 返回
     # ret1: 增量股票代码 DataFrame对象
     def fetch_latest_mkt_equity_day_data(self) -> pd.DataFrame:
-        latest_k_date = self.db.getDfBySql(
+        latest_k_date = self.db.get_df_by_sql(
             "select trade_date from stock.mkt_equ_day order by trade_date desc limit 1"
         ).iloc[0]["trade_date"]
 
@@ -280,10 +286,10 @@ class StockSyncer:
     # 获取日线表中没有的股票数据
     def get_missing_equ_day_data(self) -> pd.DataFrame:
         # 获取增量的股票数据
-        df_expect = self.db.getDfBySql(
+        df_expect = self.db.get_df_by_sql(
             "select sec_id, list_date from stock.equity where list_status_cd='L' "
         )
-        df_actual = self.db.getDfBySql(
+        df_actual = self.db.get_df_by_sql(
             "select distinct sec_id from stock.mkt_equ_day order by sec_id"
         )
         df_new = df_expect[~df_expect.sec_id.isin(df_actual.sec_id)]
@@ -307,7 +313,7 @@ class StockSyncer:
         if df is None or df.shape[0] == 0:
             logger.info("保存0条数据到数据库。")
             return False
-        df_equ = self.db.getDfBySql(
+        df_equ = self.db.get_df_by_sql(
             "select sec_id,ticker, sec_short_name from \
             stock.equity"
         )
@@ -355,11 +361,13 @@ class StockSyncer:
         rc = self.db.saveAll(entitylist)
         bf_latest_date = df.iloc[0]["trade_date"]
         after_latest_date = df.iloc[-1]["trade_date"]
-        if not self.db.updateSyncStatus(
-            "mkt_equ_day",
-            rc,
-            datetime.now(),
-            f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}",
+        if not self.db.update_any_by_id(
+            SyncStatus,
+            7, {
+                'rc':rc,
+                'update_time':datetime.now(),
+                'comment': f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"
+            }
         ):
             logger.warning("Update sync_status table failed!")
 
@@ -389,7 +397,7 @@ class StockSyncer:
             logger.info(f"fund_day表更新完毕, 增加记录{df.shape[0]}条!")
 
     def fetch_remote_fund_day_data(self) -> pd.DataFrame:
-        latest_k_date = self.db.getDfBySql(
+        latest_k_date = self.db.get_df_by_sql(
             "select max(trade_date) as trade_date \
             from stock.fund_day"
         ).iloc[0]["trade_date"]
@@ -423,7 +431,7 @@ class StockSyncer:
         if df is None or df.shape[0] == 0:
             logger.info("保存0条数据到数据库。")
             return False
-        df_fund = self.db.getDfBySql(
+        df_fund = self.db.get_df_by_sql(
             "select distinct ticker, sec_short_name from \
             stock.fund where list_status_cd='L'"
         )
@@ -433,9 +441,9 @@ class StockSyncer:
         for index, row in df_outlier.iterrows():
             update_dict[row["ticker"]] = {"list_status_cd": "L"}
 
-        self.db.updateAnyeByTicker(Fund, update_dict)
+        self.db.update_any_by_ticker(Fund, update_dict)
 
-        df_fund = self.db.getDfBySql(
+        df_fund = self.db.get_df_by_sql(
             "select distinct ticker, sec_short_name from \
             stock.fund where list_status_cd='L'"
         )
@@ -472,12 +480,13 @@ class StockSyncer:
         rc = self.db.saveAll(entitylist)
         bf_latest_date = df.iloc[0]["trade_date"]
         after_latest_date = df.iloc[-1]["trade_date"]
-        if not self.db.updateSyncStatus(
-            "fund_day",
-            rc,
-            datetime.now(),
-            f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}",
-        ):
+        if not self.db.update_any_by_id(
+            SyncStatus,
+            5, {
+                'rc':rc,
+                'update_time': datetime.now(),
+                'comment': f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"
+            }):
             logger.warning("Update sync_status table failed!")
 
         return True

@@ -3,7 +3,7 @@ from syd.domain import MktIdxDay
 import pytest
 from syd.stocksyncer import *
 from datetime import datetime, date
-from syd.logger import logger
+from kupy.logger import logger
 
 # 测试equity表的更细情况
 
@@ -28,7 +28,7 @@ def test_sector_cd_lambda():
     assert 1 == (lambda x: {"主板": 1, "创业版": 2, "科创版": 4, "北交所": 5}[x])("主板")
     assert 5 == (lambda x: {"主板": 1, "创业版": 2, "科创版": 4, "北交所": 5}[x])("北交所")
 
-
+@skip
 class TestStockSync:
     @pytest.fixture(scope="class")
     def syncer(self):
@@ -55,13 +55,13 @@ class TestStockSync:
         assert df_incremental is not None, "update 不能返回None"
         df_incremental.to_csv(f"/tmp/df_incremental.csv")
 
-        df_db_latest = db.getDfBySql("select ticker from stock.equity")
+        df_db_latest = db.get_df_by_sql("select ticker from stock.equity")
         assert df_db_latest["ticker"].is_unique, "不能有重复的股票"
 
         sizediff = df_db_latest.shape[0] - df_db_bf.shape[0]
 
         assert sizediff == df_incremental.shape[0], "增量更新应该等于原来的差值"
-        df_db_sync = db.getDfBySql(
+        df_db_sync = db.get_df_by_sql(
             "select * from stock.sync_status where table_name= 'equity'"
         )
         assert df_db_sync is not None
@@ -75,7 +75,7 @@ class TestStockSync:
         df_incremental = syncer.sync_trade_calendar()
         assert df_incremental is not None, "update 不能返回None"
 
-        df_db = db.getDfBySql(
+        df_db = db.get_df_by_sql(
             "select calendar_date from stock.trade_calendar order by trade_calendar desc limit 1"
         )
         assert df_db is not None
@@ -87,7 +87,7 @@ class TestStockSync:
         else:
             logger.info("trade_calendar已经更新到今年最后一天了")
 
-        df_db_sync = db.getDfBySql(
+        df_db_sync = db.get_df_by_sql(
             "select * from stock.sync_status where table_name= 'trade_calendar'"
         )
         assert df_db_sync is not None
@@ -148,7 +148,7 @@ class TestStockSync:
 
         # 比较datayes与tus后复权差异
         # 有36只股票后复权存在差异，目前先忽略这种差异，保留结果以后再查
-        # df_dy_hfq = db.getDfBySql("select sec_id, trade_date, accum_adj_af_factor from stock.mkt_equ_day where trade_date='20220114'")
+        # df_dy_hfq = db.get_df_by_sql("select sec_id, trade_date, accum_adj_af_factor from stock.mkt_equ_day where trade_date='20220114'")
         # df_tus_hfq = df3.loc[df3.trade_date == '20220117',:]
         # df_tus_hfq.rename(columns={'ts_code':'sec_id'}, inplace=True)
         # df_tus_hfq['sec_id'] = df_tus_hfq['sec_id'].apply(lambda x : TUSAdaptor.ts_code_to_sec_id(x))
@@ -174,7 +174,7 @@ class TestStockSync:
         df = pd.merge(df, df3, how="left", on=["ts_code", "trade_date"])
 
         # syncer.write_to_db(df)
-        df_result = db.getDfBySql(
+        df_result = db.get_df_by_sql(
             "select * from stock.mkt_equ_day \
             where ticker='000001' order by trade_date desc limit 30"
         )
@@ -207,7 +207,7 @@ class TestStockSync:
         # assert df_result.iloc[0]['accum_adj_bf_factor'] is not None , "字段不能空"
         # assert df_result.iloc[0]['accum_adj_af_factor'] is not None , "字段不能空"
 
-        df_sync_status = db.getDfBySql(
+        df_sync_status = db.get_df_by_sql(
             "select * from stock.sync_status \
             where tablename='mkt_equ_day'"
         )
@@ -229,8 +229,8 @@ class TestStockSync:
         # df.to_csv("/tmp/missing_mkt_equ_d.csv")
         # df = pd.read_pickle("/tmp/missing_mkt_equ_d.pkl")
         # syncer.write_to_db(df)
-        # df_code_expect = db.getDfBySql("select sec_id, list_date from stock.equity where list_status_cd='L' order by sec_id")
-        # df_code_actual = db.getDfBySql("select distinct sec_id from stock.mkt_equ_day order by sec_id")
+        # df_code_expect = db.get_df_by_sql("select sec_id, list_date from stock.equity where list_status_cd='L' order by sec_id")
+        # df_code_actual = db.get_df_by_sql("select distinct sec_id from stock.mkt_equ_day order by sec_id")
         # df_incr = df_code_expect[~df_code_expect.sec_id.isin(df_code_actual.sec_id)]
         # df_incr.sort_values(['list_date', 'sec_id'], inplace=True)
         # df_incr.to_csv("/tmp/df_incremental.csv")
@@ -239,7 +239,7 @@ class TestStockSync:
         syncer.sync_mkt_equ_d()
 
     def test_get_equ_name(self):
-        df_equ = db.getDfBySql(
+        df_equ = db.get_df_by_sql(
             "select sec_id,ticker, sec_short_name from \
             stock.equity where list_status_cd = 'L' "
         )
@@ -266,10 +266,10 @@ class TestStockSync:
         assert status.comment != ""
 
     def test_verify_integrity_fund_day(self, db: DBAdaptor):
-        df = db.getDfBySql(
+        df = db.get_df_by_sql(
             "select sec_id, ticker from stock.fund_day where trade_date='20220118'"
         )
-        df_fund = db.getDfBySql(
+        df_fund = db.get_df_by_sql(
             "select distinct ticker, sec_short_name from \
             stock.fund where list_status_cd='L'"
         )
@@ -278,4 +278,4 @@ class TestStockSync:
 
     def test_sync_mkt_idx_day(self, syncer: StockSyncer, db: DBAdaptor):
         pass
-        # db.getDfBySql("select ")
+        # db.get_df_by_sql("select ")

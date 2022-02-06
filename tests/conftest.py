@@ -1,12 +1,9 @@
 # -*- coding: UTF-8 -*-
 import sys
-import pytest
-from syd.logger import logger
-# import logging
 
-# logging.basicConfig(
-#     level=logging.INFO, format=" %(asctime)s - %(levelname)s- %(message)s"
-# )
+import pytest
+from kupy.logger import logger
+
 
 # each test runs on cwd to its temp dir
 @pytest.fixture(autouse=True)
