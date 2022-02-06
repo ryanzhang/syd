@@ -76,10 +76,7 @@ virtualenv:       ## Create a virtual environment.
 
 .PHONY: release
 release:          ## Create a new tag for release.
-	@TAG=$(cat syd/VERSION)
-	# @echo "WARNING: This operation will create s version tag and push to github"
-	# @read -p "Version? (provide the next x.y.z semver) : " TAG
-	# @echo "$${TAG}" > syd/VERSION
+	@TAG=$(cat syd/VERSION);\
 	@$(ENV_PREFIX)gitchangelog > HISTORY.md
 	@git add syd/VERSION HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
@@ -130,26 +127,26 @@ sdist:
 .PHONY: image systest
 image:
 	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest
-	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:$${TAG} --tls-verify=false
+	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest --tls-verify=false
 
 systest:
 	@oc apply -f .openshift/dev/cm.yaml
-	@oc delete job systest-syd -n classic-dev
+	-oc delete job systest-syd -n classic-dev
 	@oc apply -f .openshift/dev/systest-job-syd-deployment.yaml
 	@rc=$(oc get job systest-syd --template '{{.status.succeeded}}')
-	@test $${{rc}}==0 && echo "SysTest Succesfull" || exit 1;
+	@test $${{rc}}==1 && echo "SysTest Succesfull" || exit 1;
 
 
 .PHONY: deploy-dev tag-dev deploy-prod
 tag-dev:
-	@pre_version=$(cat syd/VERSION)
-	@read -p "Version? (provide the next x.y.z version,Previous tag, $${{pre_version}}) : " TAG
-	oc tag classic-dev:latest classic-dev:$${{TAG}}
-	oc apply -f .openshift/dev/cm.yaml
-	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n classic-dev
-	@echo "$${{TAG}}" > syd/VERSION
+	@pre_version=$(cat syd/VERSION);\
+	read -p "Version? (provide the next x.y.z version,Previous tag, $${{pre_version}}) : " TAG ;\
+	echo "$${TAG}" > syd/VERSION;
+	@oc tag classic-dev:latest classic-dev:$${TAG}
+	@oc apply -f .openshift/dev/cm.yaml
+	@oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n classic-dev
 
-deploy-dev: image tag-dev release
+deploy-dev: image systest tag-dev release
 
 deploy-prod:
 	@TAG=$(cat syd/VERSION)
