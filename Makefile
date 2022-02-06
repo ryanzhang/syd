@@ -77,11 +77,12 @@ virtualenv:       ## Create a virtual environment.
 .PHONY: release
 release:          ## Create a new tag for release.
 	@$(ENV_PREFIX)gitchangelog > HISTORY.md
-	@git add syd/VERSION HISTORY.md
-	@TAG=$(shell cat syd/VERSION);\
+	@TAG=v$(shell cat syd/VERSION);\
+	sed -i "s=unreleased=$${TAG}=g" HISTORY.md||True;\
+	git add syd/VERSION HISTORY.md;\
 	git commit -m "release: version $${TAG} 🚀";\
 	echo "creating git tag : $${TAG}";\
-	git tag $${TAG};
+	git tag $${TAG}; 
 	@git push -u origin HEAD --tags
 	@echo "Github Actions will detect the new tag and release the new version."
 
@@ -167,19 +168,22 @@ looptest:
 
 .PHONY: deploy-dev tag-dev deploy-prod
 tag-dev:
-	@pre_version=$(cat syd/VERSION);\
-	read -p "Version? (provide the next x.y.z version,Previous tag, $${{pre_version}}) : " TAG ;\
-	echo "$${TAG}" > syd/VERSION;
-	@oc tag classic-dev:latest classic-dev:$${TAG}
 	@oc apply -f .openshift/dev/cm.yaml
-	@oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n classic-dev
+	@git checkout syd/VERSION
+	@sleep 1
+	@PRE_TAG=$(shell cat syd/VERSION);\
+	read -p "Version? (provide the next x.y.z version,Previous tag, $${PRE_TAG}) : " TAG ;\
+	echo "$${TAG}" > syd/VERSION;\
+	oc tag classic-dev/syd:latest classic-dev/syd:$${TAG};\
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;
 
 deploy-dev: image systest tag-dev release
 
 deploy-prod:
-	@TAG=$(cat syd/VERSION)
-	oc tag classic-dev:$${{TAG}} quant-invest:${{TAG}}
-	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n quant-invest
+	@TAG=$(shell cat syd/VERSION);\
+	oc tag classic-dev/syd:$${TAG} quant-invest/syd:$${TAG};\
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n quant-invest;\
+	@echo "Release $${TAG} has been deployed successfullyto production🚀!"
 	
 
 # This project has been generated from ryanzhang/python-project-template which is forked from 

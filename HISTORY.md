@@ -2,8 +2,9 @@ Changelog
 =========
 
 
-(unreleased)
-------------
+1.0.3 (2022-02-06)
+------------------
+- Release: version 1.0.3 🚀 [Ryan Zhang]
 - Improve Makefile systest. [Ryan Zhang]
 - Fix dbadaptor compatibility issue. [Ryan Zhang]
 - Tidy the requirements.txt and fix backofflimit. [Ryan Zhang]
