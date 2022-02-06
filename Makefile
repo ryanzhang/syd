@@ -76,9 +76,10 @@ virtualenv:       ## Create a virtual environment.
 
 .PHONY: release
 release:          ## Create a new tag for release.
-	@echo "WARNING: This operation will create s version tag and push to github"
-	@read -p "Version? (provide the next x.y.z semver) : " TAG
-	@echo "$${TAG}" > syd/VERSION
+	@TAG=$(cat syd/VERSION)
+	# @echo "WARNING: This operation will create s version tag and push to github"
+	# @read -p "Version? (provide the next x.y.z semver) : " TAG
+	# @echo "$${TAG}" > syd/VERSION
 	@$(ENV_PREFIX)gitchangelog > HISTORY.md
 	@git add syd/VERSION HISTORY.md
 	@git commit -m "release: version $${TAG} 🚀"
@@ -128,14 +129,30 @@ sdist:
 #You would need podman for this
 .PHONY: image
 image:
-	@read -p "Version? (provide the next x.y.z version,Suggest projectversion-buildtag, eg: 0.0.1-1) : " TAG
-	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:$${TAG}	
+	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest
 
 .PHONY: image
 deploy:
 	@read -p "Version? (provide the next x.y.z version,Suggest projectversion-buildtag, eg: 0.0.1-1) : " TAG
 	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:$${TAG}	
 	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:$${TAG} --tls-verify=false
+
+.PHONY: deploy-dev tag-dev deploy-prod
+tag-dev:
+	@pre_version=$(cat syd/VERSION)
+	@read -p "Version? (provide the next x.y.z version,Previous tag, $${{pre_version}}) : " TAG
+	oc tag classic-dev:latest classic-dev:$${{TAG}}
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n classic-dev
+	@echo "$${{TAG}}" > syd/VERSION
+
+deploy-prod:
+	@TAG=$(cat syd/VERSION)
+	oc tag classic-dev:$${{TAG}} quant-invest:${{TAG}}
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${{TAG}} -n quant-invest
+
+deploy-dev: image tag-dev release
+
+	
 
 # This project has been generated from ryanzhang/python-project-template which is forked from 
 # rochacbruno/python-project-template

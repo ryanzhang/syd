@@ -1,13 +1,12 @@
-Changelog
+生产环境部署日志 Changelog 
 =========
 
 
-0.1.2 (2021-08-14)
+v1.0.2-2 (2022-02-05)
 ------------------
-- Fix release, README and windows CI. [Bruno Rocha]
-- Release: version 0.1.0. [Bruno Rocha]
 
-
-0.1.0 (2021-08-14)
+v1.0.1-2 (2022-02-04)
 ------------------
-- Add release command. [Bruno Rocha]
+- 
+- 
+
