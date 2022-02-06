@@ -76,12 +76,12 @@ virtualenv:       ## Create a virtual environment.
 
 .PHONY: release
 release:          ## Create a new tag for release.
-	@TAG=$(cat syd/VERSION);\
 	@$(ENV_PREFIX)gitchangelog > HISTORY.md
 	@git add syd/VERSION HISTORY.md
-	@git commit -m "release: version $${TAG} 🚀"
-	@echo "creating git tag : $${TAG}"
-	@git tag $${TAG}
+	@TAG=$(shell cat syd/VERSION);\
+	git commit -m "release: version $${TAG} 🚀";\
+	echo "creating git tag : $${TAG}";\
+	git tag $${TAG};
 	@git push -u origin HEAD --tags
 	@echo "Github Actions will detect the new tag and release the new version."
 
@@ -124,17 +124,45 @@ sdist:
 
 # Make container image by podman
 #You would need podman for this
-.PHONY: image systest
+.PHONY: image systest looptest
 image:
 	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest
 	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest --tls-verify=false
 
 systest:
+	rm -rf .systestpass
 	@oc apply -f .openshift/dev/cm.yaml
 	-oc delete job systest-syd -n classic-dev
 	@oc apply -f .openshift/dev/systest-job-syd-deployment.yaml
-	@rc=$(oc get job systest-syd --template '{{.status.succeeded}}')
-	@test $${{rc}}==1 && echo "SysTest Succesfull" || exit 1;
+	# Wait 5 seconds
+	@sleep  5
+	@for i in 1 2 3 4 ; do \
+		sleep 3;\
+		rc=`oc get job systest-syd --template '{{.status.succeeded}}'`;\
+		echo -e ".$${rc}" ;\
+		test "$${rc}" == 1 && echo "pass" && touch .systestpass; \
+		if [ -a .systestpass ];then \
+			break;\
+		fi \
+	done
+	@if [[ ! -a .systestpass ]];then \
+		echo "Failed" && exit 1;\
+	fi
+
+
+looptest:
+	@if [[ ! -a .systestpass ]];then \
+		echo "Failed" && exit 1;\
+	fi
+	@for i in 1 2 3 4 ; do \
+		sleep 1;\
+		rc=`oc get job systest-syd --template '{{.status.succeeded}}'`;\
+		echo ". $${rc}" ;\
+		test "$${rc}" == 1 && echo "pass" && touch .systestpass; \
+		if [ -a .systestpass ];then \
+			break;\
+		fi \
+	done
 
 
 .PHONY: deploy-dev tag-dev deploy-prod
