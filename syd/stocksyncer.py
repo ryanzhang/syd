@@ -80,7 +80,7 @@ class StockSyncer:
             e.ex_country_cd = "CHN"
             entitylist.append(e)
 
-        rc = self.db.saveAll(entitylist)
+        rc = self.db.save_all(entitylist)
         # Start to update update table
         if not self.db.update_any_by_id(
             SyncStatus, 1, {
@@ -178,7 +178,7 @@ class StockSyncer:
             entitylist.append(tc)
 
         after_latest_date = df_tushare.iloc[-1]["cal_date"].date()
-        rc = self.db.saveAll(entitylist)
+        rc = self.db.save_all(entitylist)
         # Start to update update table
         if not self.db.update_any_by_id(
             SyncStatus,
@@ -358,7 +358,7 @@ class StockSyncer:
             )
             k_item.accum_adj_af_factor = row["adj_factor"]
             entitylist.append(k_item)
-        rc = self.db.saveAll(entitylist)
+        rc = self.db.save_all(entitylist)
         bf_latest_date = df.iloc[0]["trade_date"]
         after_latest_date = df.iloc[-1]["trade_date"]
         if not self.db.update_any_by_id(
@@ -477,7 +477,7 @@ class StockSyncer:
             k_item.accum_adj_factor = row["adj_factor"]
 
             entitylist.append(k_item)
-        rc = self.db.saveAll(entitylist)
+        rc = self.db.save_all(entitylist)
         bf_latest_date = df.iloc[0]["trade_date"]
         after_latest_date = df.iloc[-1]["trade_date"]
         if not self.db.update_any_by_id(
