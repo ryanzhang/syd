@@ -2,6 +2,13 @@ Changelog
 =========
 
 
+(unreleased)
+------------
+- Format the code 并且修复了cache_folder 改为data_folder的一个错误. [Ryan Zhang]
+- Improve Makefile. [Ryan Zhang]
+- Fix a small error in HISTORY.md when release. [Ryan Zhang]
+
+
 1.0.3 (2022-02-06)
 ------------------
 - Release: version 1.0.3 🚀 [Ryan Zhang]
