@@ -1,11 +1,10 @@
 import os
 import time
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pandas as pd
 import tushare as ts
-
 from kupy.config import configs
 from kupy.logger import logger
 
@@ -40,10 +39,10 @@ class TUSAdaptor:
     def set_cache_mode(self, is_use_cache):
         self.is_use_cache = is_use_cache
 
-    def getStockBasicInfo(self) -> tuple[pd.DataFrame, str]:
+    def get_stock_basic_info(self) -> tuple[pd.DataFrame, str]:
         if self.is_use_cache:
             df_cache_file = (
-                configs["cache_folder"].data + "tus_stock_basic.pkl"
+                configs["data_folder"].data + "cache/" + "tus_stock_basic.pkl"
             )
         else:
             df_cache_file = None
@@ -74,7 +73,7 @@ class TUSAdaptor:
 
         if self.is_export_csv:
             csv_file_path = (
-                configs["cache_folder"].data + "tus_stock_basic.csv"
+                configs["data_folder"].data + "cache/" + "tus_stock_basic.csv"
             )
             df.to_csv(csv_file_path)
         else:
@@ -83,9 +82,11 @@ class TUSAdaptor:
         return df, csv_file_path
 
     # start_date -> datetime
-    def getTradeCal(self, start_date: datetime) -> tuple[pd.DataFrame, str]:
+    def get_trade_cal(self, start_date: datetime) -> tuple[pd.DataFrame, str]:
         if self.is_use_cache:
-            df_cache_file = configs["cache_folder"].data + "tus_trade_cal.pkl"
+            df_cache_file = (
+                configs["data_folder"].data + "cache/" + "tus_trade_cal.pkl"
+            )
         else:
             df_cache_file = None
 
@@ -117,7 +118,7 @@ class TUSAdaptor:
 
         if self.is_export_csv:
             csv_file_path = (
-                configs["cache_folder"].data + "tus_stock_basic.csv"
+                configs["data_folder"].data + "cache/" + "tus_stock_basic.csv"
             )
             df.to_csv(csv_file_path)
         else:
@@ -127,7 +128,7 @@ class TUSAdaptor:
 
     # 获取一天的交易数据
     # 一天一个账户不能超过50次
-    def getMktEquD(self, trade_date: datetime, ts_code=""):
+    def get_mkt_equd(self, trade_date: datetime, ts_code=""):
 
         df = pd.DataFrame()
         # 允许重试3次
@@ -139,7 +140,7 @@ class TUSAdaptor:
                 df = self.conn.daily(
                     ts_code=ts_code, trade_date=trade_date.strftime("%Y%m%d")
                 )
-            except:
+            except Exception:
                 logger.info(f"{trade_date} 日期数据 重试{count}次...")
                 if count == 2:
                     raise Exception("重试3次仍然失败，终止运行!")
@@ -149,7 +150,7 @@ class TUSAdaptor:
         # df.sort_values(['ts_code', 'trade_date'], inplace=True)
         return df
 
-    def getMktEquDExtra(self, trade_date: datetime, ts_code=""):
+    def get_mt_equd_extra(self, trade_date: datetime, ts_code=""):
         df = pd.DataFrame()
         # 允许重试3次
         for count in range(3):
@@ -160,7 +161,7 @@ class TUSAdaptor:
                 df = self.conn.daily_basic(
                     ts_code=ts_code, trade_date=trade_date.strftime("%Y%m%d")
                 )
-            except:
+            except Exception:
                 logger.info(f"{trade_date} 日期数据 重试{count}次...")
                 if count == 2:
                     raise Exception("重试3次仍然失败，终止运行!")
@@ -169,7 +170,7 @@ class TUSAdaptor:
                 break
         return df
 
-    def getMktEquDhfq(self, trade_date: datetime, ts_code=""):
+    def get_mkt_equdhfq(self, trade_date: datetime, ts_code=""):
         df = pd.DataFrame()
         # 允许重试3次
         for count in range(3):
@@ -180,7 +181,7 @@ class TUSAdaptor:
                 df = self.conn.adj_factor(
                     ts_code=ts_code, trade_date=trade_date.strftime("%Y%m%d")
                 )
-            except:
+            except Exception:
                 logger.info(f"{trade_date} 日期数据 重试{count}次...")
                 if count == 2:
                     raise Exception("重试3次仍然失败，终止运行!")
@@ -192,7 +193,7 @@ class TUSAdaptor:
 
     # 根据股票列表取回一天的数据
     # code_list不能超过1000
-    def getMktEquDByCodeList(
+    def get_mkt_equd_by_codelist(
         self, sec_ids: pd.Series, start_date: datetime, end_date: datetime
     ) -> pd.DataFrame:
         ts_code_str_list = ""
@@ -258,7 +259,7 @@ class TUSAdaptor:
 
     # Deprecated
     # 后复权行情 从老接口获取, 直接调用ts 而不是pro_api
-    def getMktEquDAdjAf(self, code_list, start_date):
+    def get_mkt_equd_adj_af(self, code_list, start_date):
         df = pd.DataFrame()
         for code in code_list:
             ts_code = code[0:6] + "." + TUSAdaptor.db_code_mapper[code[7:11]]
@@ -274,7 +275,7 @@ class TUSAdaptor:
         return df
 
     # 后复权行情 从老接口获取, 直接调用ts 而不是pro_api
-    def getFundDAdjAf(self, code_list, start_date):
+    def get_fundd_adj_af(self, code_list, start_date):
         df = pd.DataFrame()
         for code in code_list:
             ts_code = code[0:6] + "." + TUSAdaptor.db_code_mapper[code[7:11]]
@@ -291,7 +292,7 @@ class TUSAdaptor:
 
     # 获取一天的交易数据
     # 一天一个账户不能超过50次
-    def getFundDaily(self, trade_date: datetime, ts_code=""):
+    def get_fundd(self, trade_date: datetime, ts_code=""):
 
         df = pd.DataFrame()
         # 允许重试3次
@@ -303,7 +304,7 @@ class TUSAdaptor:
                 df = self.conn.fund_daily(
                     ts_code=ts_code, trade_date=trade_date.strftime("%Y%m%d")
                 )
-            except:
+            except Exception:
                 logger.info(f"{trade_date} 日期数据 重试{count}次...")
                 if count == 2:
                     raise Exception("重试3次仍然失败，终止运行!")
@@ -312,7 +313,7 @@ class TUSAdaptor:
                 break
         return df
 
-    def getFundDayhfq(self, trade_date: datetime, ts_code=""):
+    def get_fundd_hfq(self, trade_date: datetime, ts_code=""):
         df = pd.DataFrame()
         # 允许重试3次
         for count in range(3):
@@ -323,7 +324,7 @@ class TUSAdaptor:
                 df = self.conn.fund_adj(
                     ts_code=ts_code, trade_date=trade_date.strftime("%Y%m%d")
                 )
-            except:
+            except Exception:
                 logger.info(f"{trade_date} 日期数据 重试{count}次...")
                 if count == 2:
                     raise Exception("重试3次仍然失败，终止运行!")

@@ -1,5 +1,6 @@
 from kupy.logger import logger
 
+
 def test_logger():
     assert logger is not None
     logger.info("This is info level message")

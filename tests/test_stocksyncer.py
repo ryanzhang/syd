@@ -28,6 +28,7 @@ def test_sector_cd_lambda():
     assert 1 == (lambda x: {"主板": 1, "创业版": 2, "科创版": 4, "北交所": 5}[x])("主板")
     assert 5 == (lambda x: {"主板": 1, "创业版": 2, "科创版": 4, "北交所": 5}[x])("北交所")
 
+
 @skip
 class TestStockSync:
     @pytest.fixture(scope="class")
@@ -97,7 +98,7 @@ class TestStockSync:
         assert df_db_sync.iloc[0]["comment"] != "", "sync_status comment 字段不为空"
 
     def test_get_latest_trade_date(self, syncer: StockSyncer):
-        ret = syncer.getLatestTradeDate()
+        ret = syncer.get_latest_trade_date()
         logger.info("最后一个交易日:" + str(ret))
         assert ret <= datetime.today().date()
 
@@ -181,7 +182,7 @@ class TestStockSync:
         assert df_result is not None
         assert df_result.shape[0] > 1
         assert (
-            df_result.iloc[0]["trade_date"] == syncer.getLatestTradeDate()
+            df_result.iloc[0]["trade_date"] == syncer.get_latest_trade_date()
         ), "数据库中没有找到最后一个交易日数据"
         assert df_result.iloc[0]["sec_id"] is not None, "字段不能空"
         assert df_result.iloc[0]["ticker"] is not None, "字段不能空"

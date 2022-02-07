@@ -15,7 +15,8 @@ xfail = pytest.mark.xfail
 
 query_sql = "select * from stock.equity"
 expect_cache_file_path = (
-    configs["data_folder"].data + "cache/"
+    configs["data_folder"].data
+    + "cache/"
     + DBAdaptor.get_hash_filename(query_sql)
     + ".pkl"
 )
@@ -54,15 +55,16 @@ class TestDBAdaptor:
         assert os.path.exists(expect_cache_file_path)
         assert os.path.exists(csv_file)
 
-    def test_update_sync_status(self, db:DBAdaptor):
+    def test_update_sync_status(self, db: DBAdaptor):
         # db.set_cache_mode(True)
         assert db.update_any_by_id(
             SyncStatus,
-            1, {
-                "rc":True,
-                "update_time":datetime.datetime.now(),
-                "comment":"更新前:55,增量:10"
-            }
+            1,
+            {
+                "rc": True,
+                "update_time": datetime.datetime.now(),
+                "comment": "更新前:55,增量:10",
+            },
         )
 
     @skip
@@ -105,9 +107,8 @@ class TestDBAdaptor:
         logger.info(str(df))
         assert df.loc[df["list_status_cd"] != "L", :].shape[0] == 0
 
-    def test_get_any_by_id(self, db:DBAdaptor):
+    def test_get_any_by_id(self, db: DBAdaptor):
         ss = db.get_any_by_id(SyncStatus, 1)
         assert ss is not None
-        assert ss.table_name == "equity" 
+        assert ss.table_name == "equity"
         assert ss.rc
-

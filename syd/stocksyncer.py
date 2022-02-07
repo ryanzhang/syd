@@ -2,13 +2,21 @@
 from datetime import datetime, timedelta
 
 import pandas as pd
-from sqlalchemy.ext.declarative import declarative_base
 
 # from  pandas.tseries.offsets import MonthEnd, YearEnd
 from kupy.config import configs
 from kupy.dbadaptor import DBAdaptor
-from syd.domain import Equity, Fund, FundDay, MktEquDay, SyncStatus, TradeCalendar
 from kupy.logger import logger
+from sqlalchemy.ext.declarative import declarative_base
+
+from syd.domain import (
+    Equity,
+    Fund,
+    FundDay,
+    MktEquDay,
+    SyncStatus,
+    TradeCalendar,
+)
 from syd.tusadaptor import TUSAdaptor
 
 Base = declarative_base()
@@ -37,15 +45,15 @@ class StockSyncer:
             ret = df.loc[
                 (df.calendar_date == thedate) & (df.exchange_cd == "XSHG"),
                 "is_open",
-            ]
+            ].iloc[0]
         # logger.info(type(ret.iloc[0]))
-        return ret.iloc[0]
+        return ret
 
     # 返回
     # ret1: 增量股票代码 Series
     # ret2: Cache_file list [tablename_db_timestamp.csv, tablename_tus_timestamp.csv, tablename_timestamp.csv]
     def sync_equity(self) -> tuple[pd.Series, list]:
-        df_tushare, tus_csv_file = self.tus.getStockBasicInfo()
+        df_tushare, tus_csv_file = self.tus.get_stock_basic_info()
         df_db, db_bf_csv_file = self.db.get_df_csv_by_sql(
             "select ticker from stock.equity"
         )
@@ -83,11 +91,13 @@ class StockSyncer:
         rc = self.db.save_all(entitylist)
         # Start to update update table
         if not self.db.update_any_by_id(
-            SyncStatus, 1, {
-                'rc':rc,
-                'update_time': datetime.now(),
-                'comment': f"更新前:{origin_size},增量:{incr_size}"
-            }
+            SyncStatus,
+            1,
+            {
+                "rc": rc,
+                "update_time": datetime.now(),
+                "comment": f"更新前:{origin_size},增量:{incr_size}",
+            },
         ):
             logger.warning("Update sync_status table failed!")
         if not rc:
@@ -124,7 +134,7 @@ class StockSyncer:
             return pd.DataFrame()
         start_date = bf_latest_date + timedelta(days=1)
         # 默认只取'SSE'上海交易所的交易日期，不再单独保存深圳交易所的交易日期
-        df_tushare, tus_csv_file = self.tus.getTradeCal(start_date)
+        df_tushare, tus_csv_file = self.tus.get_trade_cal(start_date)
         if df_tushare.shape[0] == 0:
             # Return empty DataFrame
             return pd.DataFrame()
@@ -182,16 +192,18 @@ class StockSyncer:
         # Start to update update table
         if not self.db.update_any_by_id(
             SyncStatus,
-            9, {
-                'rc':rc,
-                'update_time': datetime.now(),
-                'comment': f"更新前:{bf_latest_date},更新后:{after_latest_date}",
-            }
+            9,
+            {
+                "rc": rc,
+                "update_time": datetime.now(),
+                "comment": f"更新前:{bf_latest_date},更新后:{after_latest_date}",
+            },
         ):
             logger.warning("Update sync_status table failed!")
         if not rc:
             export_filepath = (
-                configs["cache_folder"].data
+                configs["data_folder"].data
+                + "cache/"
                 + "equity_sync_"
                 + datetime.now().strftime("%Y%m%d%H%M%S")
                 + ".csv"
@@ -208,7 +220,7 @@ class StockSyncer:
 
         return df_transform
 
-    def getLatestTradeDate(self) -> datetime:
+    def get_latest_trade_date(self) -> datetime:
         # ll = datetime.today().strftime('%Y%m%d')
         today = datetime.today().date()
         df = self.get_trade_calendar()
@@ -231,7 +243,7 @@ class StockSyncer:
             "select trade_date from stock.mkt_equ_day order by trade_date desc limit 1"
         ).iloc[0]["trade_date"]
 
-        latest_t_date = self.getLatestTradeDate()
+        latest_t_date = self.get_latest_trade_date()
 
         # start_date
         if latest_k_date > latest_t_date:
@@ -246,9 +258,9 @@ class StockSyncer:
         while fetch_date <= latest_t_date:
             # 跳过不开盘的日子,避免不必要的远程调用
             if self.is_open_day(fetch_date):
-                df1 = self.tus.getMktEquD(fetch_date)
-                df2 = self.tus.getMktEquDExtra(fetch_date)
-                df3 = self.tus.getMktEquDhfq(fetch_date)
+                df1 = self.tus.get_mkt_equd(fetch_date)
+                df2 = self.tus.get_mt_equd_extra(fetch_date)
+                df3 = self.tus.get_mkt_equdhfq(fetch_date)
                 df = pd.merge(
                     df1, df2, how="left", on=["ts_code", "trade_date"]
                 )
@@ -268,14 +280,16 @@ class StockSyncer:
             file_suffix = datetime.now().strftime("%Y%m%d%H%M%S")
             if bool(configs["remote_api_cache_pkl"].data):
                 df.to_pickle(
-                    configs["cache_folder"].data
+                    configs["data_folder"].data
+                    + "cache/"
                     + "sync_mkt_equ_d_"
                     + file_suffix
                     + ".pkl"
                 )
             if bool(configs["remote_api_cache_csv"].data):
                 df.to_csv(
-                    configs["cache_folder"].data
+                    configs["data_folder"].data
+                    + "cache/"
                     + "sync_mkt_equ_d_"
                     + file_suffix
                     + ".csv"
@@ -301,7 +315,7 @@ class StockSyncer:
         )
         logger.info("开始从tushare获取日线数据")
 
-        df = self.tus.getMktEquDByCodeList(
+        df = self.tus.get_mkt_equd_by_codelist(
             sec_ids=df_new["sec_id"],
             start_date=df_new["list_date"].min(),
             end_date=end_date,
@@ -345,7 +359,7 @@ class StockSyncer:
             k_item.accum_adj_bf_factor = 1
             k_item.neg_market_value = row["circ_mv"] * 100000000
             k_item.market_value = row["total_mv"] * 100000000
-            k_item.chg_pct = row["pct_chg"]/100
+            k_item.chg_pct = row["pct_chg"] / 100
             # 静态市盈率 k_item.pe 靜態市盈率=公司總市值/去年淨利潤
             k_item.pe = row["pe"]
             k_item.pe1 = row["pe_ttm"]
@@ -363,11 +377,12 @@ class StockSyncer:
         after_latest_date = df.iloc[-1]["trade_date"]
         if not self.db.update_any_by_id(
             SyncStatus,
-            7, {
-                'rc':rc,
-                'update_time':datetime.now(),
-                'comment': f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"
-            }
+            7,
+            {
+                "rc": rc,
+                "update_time": datetime.now(),
+                "comment": f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}",
+            },
         ):
             logger.warning("Update sync_status table failed!")
 
@@ -381,14 +396,16 @@ class StockSyncer:
             file_suffix = datetime.now().strftime("%Y%m%d%H%M%S")
             if bool(configs["remote_api_cache_pkl"].data):
                 df.to_pickle(
-                    configs["cache_folder"].data
+                    configs["data_folder"].data
+                    + "cache/"
                     + "sync_fund_day_"
                     + file_suffix
                     + ".pkl"
                 )
             if bool(configs["remote_api_cache_csv"].data):
                 df.to_csv(
-                    configs["cache_folder"].data
+                    configs["data_folder"].data
+                    + "cache/"
                     + "sync_fund_day_"
                     + file_suffix
                     + ".csv"
@@ -402,7 +419,7 @@ class StockSyncer:
             from stock.fund_day"
         ).iloc[0]["trade_date"]
 
-        latest_t_date = self.getLatestTradeDate()
+        latest_t_date = self.get_latest_trade_date()
 
         # start_date
         if latest_k_date > latest_t_date:
@@ -417,8 +434,8 @@ class StockSyncer:
         while fetch_date <= latest_t_date:
             # 跳过不开盘的日子,避免不必要的远程调用
             if self.is_open_day(fetch_date):
-                df1 = self.tus.getFundDaily(fetch_date)
-                df2 = self.tus.getFundDayhfq(fetch_date)
+                df1 = self.tus.get_fundd(fetch_date)
+                df2 = self.tus.get_fundd_hfq(fetch_date)
                 df = pd.merge(
                     df1, df2, how="left", on=["ts_code", "trade_date"]
                 )
@@ -482,11 +499,13 @@ class StockSyncer:
         after_latest_date = df.iloc[-1]["trade_date"]
         if not self.db.update_any_by_id(
             SyncStatus,
-            5, {
-                'rc':rc,
-                'update_time': datetime.now(),
-                'comment': f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}"
-            }):
+            5,
+            {
+                "rc": rc,
+                "update_time": datetime.now(),
+                "comment": f"更新前(最新未更新日期):{bf_latest_date},更新后(最后已更新日期):{after_latest_date}",
+            },
+        ):
             logger.warning("Update sync_status table failed!")
 
         return True

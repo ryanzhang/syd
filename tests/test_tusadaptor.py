@@ -12,7 +12,10 @@ skipif = pytest.mark.skipif
 skip = pytest.mark.skip
 xfail = pytest.mark.xfail
 
-expect_cache_filepath = configs["data_folder"].data + "cache/tus_stock_basic.pkl"
+expect_cache_filepath = (
+    configs["data_folder"].data + "cache/tus_stock_basic.pkl"
+)
+
 
 @skip
 class TestTUSAdaptor:
@@ -23,7 +26,7 @@ class TestTUSAdaptor:
         return tus
 
     def test_get_stock_basic_with_cache(self, tus):
-        df, csv_filepath = tus.getStockBasicInfo()
+        df, csv_filepath = tus.get_stock_basic_info()
         assert df is not None and df.size > 0, "返回的df不能为空"
         assert csv_filepath is not None
         assert expect_cache_filepath is not None
@@ -37,7 +40,7 @@ class TestTUSAdaptor:
     # @skip
     def test_get_mkt_equ_daily(self, tus: TUSAdaptor):
         trade_date = date(2022, 1, 28)
-        df = tus.getMktEquD(trade_date)
+        df = tus.get_mkt_equd(trade_date)
         assert df is not None and df.shape[0] > 0, "返回的df不能为空"
         df.to_csv("/tmp/df_20220128.csv")
 
@@ -52,7 +55,7 @@ class TestTUSAdaptor:
         assert start_date < datetime.today().date()
         assert end_date < datetime.today().date()
         assert start_date < end_date
-        df = tus.getMktEquDByCodeList(
+        df = tus.get_mkt_equd_by_codelist(
             df_expect["sec_id"], start_date=start_date, end_date=end_date
         )
         assert df is not None and df.shape[0] > 0, "返回的df不能为空"
@@ -62,7 +65,7 @@ class TestTUSAdaptor:
     # def test_get_stock_basic_without_cache(self,tus):
     #     #默认是没有cache的
     #     tus.set_cache_mode(False)
-    #     df,csv_filepath = tus.getStockBasicInfo()
+    #     df,csv_filepath = tus.get_stock_basic_info()
     #     assert df is not None
     #     assert csv_filepath is None
 

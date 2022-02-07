@@ -2,7 +2,6 @@ import logging
 import os
 
 import pandas as pd
-from mootdx import consts
 from mootdx.quotes import Quotes
 
 logging.basicConfig(
@@ -18,7 +17,7 @@ else:
         client = Quotes.factory(market="std")
         df_load = client.stocks(0)
 
-    except:
+    except Exception:
         logging.error(" load data from tdx failure !")
         exit()
 
