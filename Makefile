@@ -175,15 +175,16 @@ tag-dev:
 	read -p "Version? (provide the next x.y.z version,Previous tag, $${PRE_TAG}) : " TAG ;\
 	echo "$${TAG}" > syd/VERSION;\
 	oc tag classic-dev/syd:latest classic-dev/syd:$${TAG};\
-	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;\
+	echo "Release $${TAG} has been deployed successfullyto stage environment!"
 
-deploy-dev: test image systest tag-dev release
+stagedeploy: test image systest tag-dev release
 
-deploy-prod:
+proddeploy:
 	@TAG=$(shell cat syd/VERSION);\
 	oc tag classic-dev/syd:$${TAG} quant-invest/syd:$${TAG};\
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n quant-invest;\
-	@echo "Release $${TAG} has been deployed successfullyto production🚀!"
+	echo "Release $${TAG} has been deployed successfullyto production🚀!"
 	
 
 # This project has been generated from ryanzhang/python-project-template which is forked from 
