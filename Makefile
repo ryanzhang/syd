@@ -177,7 +177,7 @@ tag-dev:
 	oc tag classic-dev/syd:latest classic-dev/syd:$${TAG};\
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;
 
-deploy-dev: image systest tag-dev release
+deploy-dev: test image systest tag-dev release
 
 deploy-prod:
 	@TAG=$(shell cat syd/VERSION);\
