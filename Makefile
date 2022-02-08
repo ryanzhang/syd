@@ -183,7 +183,7 @@ stagedeploy: test image systest tag-dev release
 proddeploy:
 	@TAG=$(shell cat syd/VERSION);\
 	oc tag classic-dev/syd:$${TAG} quant-invest/syd:$${TAG};\
-	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n quant-invest;\
+	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/quant-invest/syd:$${TAG} -n quant-invest;\
 	echo "Release $${TAG} has been deployed successfullyto production🚀!"
 	
 
