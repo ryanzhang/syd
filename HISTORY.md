@@ -2,8 +2,13 @@ Changelog
 =========
 
 
-(unreleased)
+(v1.0.5)
 ------------
+- Fix a error and catch error and continue. [Ryan Zhang]
+- Modify some typo. [Ryan Zhang]
+- Fix a proddeploy error. [Ryan Zhang]
+- Improve Makefile. [Ryan Zhang]
+- Release: version v1.0.4 🚀 [Ryan Zhang]
 - Format the code 并且修复了cache_folder 改为data_folder的一个错误. [Ryan Zhang]
 - Improve Makefile. [Ryan Zhang]
 - Fix a small error in HISTORY.md when release. [Ryan Zhang]
