@@ -75,10 +75,12 @@ class StockSyncer:
             e.list_sector = row["market"]
             try:
                 e.list_sector_cd = (
-                lambda x: {"主板": 1, "创业板": 2, "科创板": 4, "北交所": 5}[x]
-            )(row["market"])
-            except Exception as e:
-                logger.warning(f"转换板块code出错, {row['market']}, 但仍然继续，请稍后检查数据一致性")
+                    lambda x: {"主板": 1, "创业板": 2, "科创板": 4, "北交所": 5}[x]
+                )(row["market"])
+            except Exception as exc:
+                logger.warning(
+                    f"转换板块code出错, Exception: {exc}, {row['market']}, 但仍然继续，请稍后检查数据一致性"
+                )
             e.list_status_cd = (lambda x: {"L": "L", "D": "DE", "P": "S"}[x])(
                 row["list_status"]
             )
