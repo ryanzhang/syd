@@ -2,8 +2,11 @@ Changelog
 =========
 
 
-(v1.0.5)
+(unreleased)
 ------------
+- Fix a lint warning. [Ryan Zhang]
+- Fix the resources folder has been changed to root causing logs not
+  output. [Ryan Zhang]
 - Fix a error and catch error and continue. [Ryan Zhang]
 - Modify some typo. [Ryan Zhang]
 - Fix a proddeploy error. [Ryan Zhang]
