@@ -32,9 +32,9 @@ spec:
                 limits:
                   memory: 1Gi
               volumeMounts:
-                - mountPath: /app/syd/data
+                - mountPath: /app/data
                   name: syd-data-volume
-                - mountPath: /app/syd/resources/app-config.properties
+                - mountPath: /app/resources/app-config.properties
                   subPath: app-config.properties
                   readOnly: false
                   name: syd-properties-volume

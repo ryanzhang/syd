@@ -151,7 +151,7 @@ systest:
 	fi
 
 
-.PHONY: deploy-dev tag-dev deploy-prod testns
+.PHONY: deploystage tag-dev deployprod testns
 testns:
 	@oc project|grep "quant-invest" || echo "当前命名空间不对！";exit 125
 
@@ -166,9 +166,10 @@ tag-dev:
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;\
 	echo "Release $${TAG} has been deployed successfullyto stage environment!"
 
-stagedeploy: test image systest tag-dev release
+deploystage: test image systest tag-dev 
 
-proddeploy:
+#release can't be proceed in fedora.razor due to git permission
+deployprod: release
 	@TAG=$(shell cat syd/VERSION);\
 	oc tag classic-dev/syd:$${TAG} quant-invest/syd:$${TAG};\
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/quant-invest/syd:$${TAG} -n quant-invest;\
