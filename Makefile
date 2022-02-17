@@ -170,6 +170,7 @@ deploystage: test image systest tag-dev
 
 #release can't be proceed in fedora.razor due to git permission
 deployprod: release
+	@oc apply -f .openshift/prod/cm.yaml
 	@TAG=$(shell cat syd/VERSION);\
 	oc tag classic-dev/syd:$${TAG} quant-invest/syd:$${TAG};\
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/quant-invest/syd:$${TAG} -n quant-invest;\
