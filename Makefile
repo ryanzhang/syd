@@ -125,7 +125,7 @@ sdist:
 
 # Make container image by podman
 #You would need podman for this
-.PHONY: image systest looptest
+.PHONY: image systest
 image:
 	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest
 	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest --tls-verify=false
@@ -139,7 +139,7 @@ systest:
 	@sleep  5
 	@for i in 1 2 3 4 ; do \
 		sleep 3;\
-		rc=`oc get job systest-syd --template '{{.status.succeeded}}'`;\
+		rc=`oc get job systest-syd --template '{{.status.succeeded}}' -n classic-dev`;\
 		echo -e ".$${rc}" ;\
 		test "$${rc}" == 1 && echo "pass" && touch .systestpass; \
 		if [ -a .systestpass ];then \
@@ -151,22 +151,10 @@ systest:
 	fi
 
 
-looptest:
-	@if [[ ! -a .systestpass ]];then \
-		echo "Failed" && exit 1;\
-	fi
-	@for i in 1 2 3 4 ; do \
-		sleep 1;\
-		rc=`oc get job systest-syd --template '{{.status.succeeded}}'`;\
-		echo ". $${rc}" ;\
-		test "$${rc}" == 1 && echo "pass" && touch .systestpass; \
-		if [ -a .systestpass ];then \
-			break;\
-		fi \
-	done
+.PHONY: deploy-dev tag-dev deploy-prod testns
+testns:
+	@oc project|grep "quant-invest" || echo "当前命名空间不对！";exit 125
 
-
-.PHONY: deploy-dev tag-dev deploy-prod
 tag-dev:
 	@oc apply -f .openshift/dev/cm.yaml
 	@git checkout syd/VERSION
