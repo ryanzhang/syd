@@ -16,8 +16,8 @@ data:
     # ts.set_token('7fd86d168266ec8740bd13eb4f9f9b157b7c0c2a5609a8cfc4e5bdaa')
 
     log_level=DEBUG
-    log_output_path=/app/syd/data/log/sys-app.log
-    cache_folder=/app/syd/data/cache/
+    log_output_path=/app/syd/data/log/syd-app.log
+    data_folder=/app/syd/data/cache/
 kind: ConfigMap
 metadata:
   name: syd-main-config

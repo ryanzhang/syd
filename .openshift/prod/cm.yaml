@@ -17,7 +17,7 @@ data:
 
     log_level=DEBUG
     log_output_path=/app/syd/data/log/sys-app.log
-    cache_folder=/app/syd/data/cache/
+    data_folder=/app/syd/data/cache/
 kind: ConfigMap
 metadata:
   name: syd-main-config
