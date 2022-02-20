@@ -18,11 +18,15 @@ show:             ## Show the current environment.
 	@$(ENV_PREFIX)python -V
 	@$(ENV_PREFIX)python -m site
 
-.PHONY: install
+.PHONY: install installdep
 install:          ## Install the project in dev mode.
 	@if [ "$(USING_POETRY)" ]; then poetry install && exit; fi
 	@echo "Don't forget to run 'make virtualenv' if you got errors."
 	$(ENV_PREFIX)pip install -e .[test]
+
+installdep:
+	@pip3 install -r requirements.txt -U
+
 
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
@@ -39,7 +43,7 @@ lint:             ## Run pep8, black, mypy linters.
 
 .PHONY: test
 test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=syd -l --tb=short --maxfail=1 tests/
+	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=syd -l --tb=short --maxfail=1 tests/ || exit 1
 	$(ENV_PREFIX)coverage xml
 	$(ENV_PREFIX)coverage html
 
@@ -127,6 +131,7 @@ sdist:
 #You would need podman for this
 .PHONY: image systest
 image:
+	@oc project|grep "classic-dev" || exit 1
 	https_prox=http://192.168.2.15:3128 podman build -f Containerfile . -t default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest
 	podman push default-route-openshift-image-registry.apps.ocp1.galaxy.io/classic-dev/syd:latest --tls-verify=false
 
@@ -166,7 +171,7 @@ tag-dev:
 	oc set image cronjob/syd syd=image-registry.openshift-image-registry.svc:5000/classic-dev/syd:$${TAG} -n classic-dev;\
 	echo "Release $${TAG} has been deployed successfullyto stage environment!"
 
-deploystage: test image systest tag-dev 
+deploystage: installdep test image systest tag-dev 
 
 #release can't be proceed in fedora.razor due to git permission
 deployprod: release
