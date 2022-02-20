@@ -2,8 +2,13 @@ Changelog
 =========
 
 
-(unreleased)
+(v1.0.7)
 ------------
+- Fix a bug configmap not update. [Ryan Zhang]
+- Improve release process. [Ryan Zhang]
+- Upgrade pg sqlalchemy_db_string due to kupy upgrade. [Ryan Zhang]
+- Fix a release process bug in Makefile. [Ryan Zhang]
+- Release: version v1.0.6 🚀 [Ryan Zhang]
 - Fix a lint warning. [Ryan Zhang]
 - Fix the resources folder has been changed to root causing logs not
   output. [Ryan Zhang]

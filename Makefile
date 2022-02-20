@@ -82,8 +82,8 @@ virtualenv:       ## Create a virtual environment.
 release:          ## Create a new tag for release.
 	@$(ENV_PREFIX)gitchangelog > HISTORY.md
 	@TAG=v$(shell cat syd/VERSION);\
-	sed -i "s=unreleased=$${TAG}=g" HISTORY.md||True;\
-	git add syd/VERSION HISTORY.md;\
+	sed -i "" "s=unreleased=$${TAG}=g" HISTORY.md||True;\
+	git add syd/VERSION HISTORY.md ||exit 1\
 	git commit -m "release: version $${TAG} 🚀";\
 	echo "creating git tag : $${TAG}";\
 	git tag $${TAG}; 
