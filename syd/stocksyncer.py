@@ -495,7 +495,8 @@ class StockSyncer:
             k_item.close_price = row["close"]
             k_item.turnover_vol = row["vol"] * 100
             k_item.turnover_value = row["amount"] * 1000
-            k_item.chg_pct = row["pct_chg"]
+            k_item.chg= row["change"]
+            k_item.chg_pct = row["pct_chg"]/100
             k_item.accum_adj_factor = row["adj_factor"]
 
             entitylist.append(k_item)
