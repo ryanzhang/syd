@@ -2,8 +2,10 @@ Changelog
 =========
 
 
-(v1.0.7)
+(v1.0.8)
 ------------
+- Fix a bug in chg_pct/100. [Ryan Zhang]
+- Improve the release process. [Ryan Zhang]
 - Fix a bug configmap not update. [Ryan Zhang]
 - Improve release process. [Ryan Zhang]
 - Upgrade pg sqlalchemy_db_string due to kupy upgrade. [Ryan Zhang]
