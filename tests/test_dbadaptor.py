@@ -18,7 +18,7 @@ expect_cache_file_path = (
     configs["data_folder"].data
     + "cache/"
     + DBAdaptor.get_hash_filename(query_sql)
-    + ".pkl"
+    + ".parquet"
 )
 
 
